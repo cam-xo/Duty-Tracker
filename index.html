@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Duty & Fatigue Tracker v0.35 — CAO 48.1 App 4B</title>
+<title>Duty & Fatigue Tracker v0.36 — CAO 48.1 App 4B</title>
 <style>
   :root{
     --bg:#0b0e13;
@@ -291,7 +291,7 @@
   <div class="topbar-left">
     <div class="stripe"></div>
     <div class="brand">
-      <h1>Duty &amp; Fatigue Tracker <span class="version-tag">v0.35</span></h1>
+      <h1>Duty &amp; Fatigue Tracker <span class="version-tag">v0.36</span></h1>
       <p>OMY - Fatigue Management System v0.9 (CAO 48.1 Appendix 4B) — personal reference tool</p>
     </div>
   </div>
@@ -780,11 +780,15 @@ function isDayShiftStandby(standbyEntry){
 }
 
 /* ---------------- Max FDP computation ---------------- */
-// Walks backward through consecutive FDPs in the same standby: if the
-// immediately preceding FDP has no qualifying (>=2h) rest gap before this
-// entry — including zero or overlapping gaps — this entry isn't really a
-// fresh FDP, it's a continuation of the same unbroken duty period, and
-// inherits that period's true start for Table 6 / deadline purposes.
+// Walks backward through consecutive FDPs in the same standby to find the
+// TRUE original start of this (possibly split-duty-extended) FDP. Per the
+// manual's own worked example (Table 7: 0800 start, 12h base, 2.5h rest
+// 1000-1230, extended to 14.5h ending 2230) — the extended deadline is
+// measured from the ORIGINAL start, with the rest period's duration
+// included in that span, not used as a reason to restart the clock. So a
+// qualifying (>=2h) rest break still chains back to the original anchor;
+// only an immediately-preceding NFD, or being first in the standby, stops
+// the chain (NFD is duty, not rest, so a genuinely fresh FDP follows it).
 function effectiveFDPChainStart(entry, all){
   if(entry.type !== 'FDP') return entryDates(entry).start;
   const {start} = entryDates(entry);
@@ -799,10 +803,8 @@ function effectiveFDPChainStart(entry, all){
   const idx = siblings.findIndex(d => d.e.id === entry.id);
   if(idx <= 0) return start;
   const prev = siblings[idx-1];
-  if(prev.e.type !== 'FDP') return start;
-  const gapHours = (start.getTime() - prev.end.getTime()) / 3600000;
-  if(gapHours >= 2) return start; // genuine split-duty break — fresh anchor here
-  return effectiveFDPChainStart(prev.e, all); // continuation — inherit predecessor's anchor
+  if(prev.e.type !== 'FDP') return start; // preceded by NFD (duty, not rest) — fresh anchor here
+  return effectiveFDPChainStart(prev.e, all); // always chain back through FDP-to-FDP links
 }
 function computeMaxFDP(entry, all){
   const {start} = entryDates(entry);
