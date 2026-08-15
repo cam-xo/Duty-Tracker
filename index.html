@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Duty & Fatigue Tracker v0.37 — CAO 48.1 App 4B</title>
+<title>Duty & Fatigue Tracker v0.38 — CAO 48.1 App 4B</title>
 <style>
   :root{
     --bg:#0b0e13;
@@ -292,7 +292,7 @@
   <div class="topbar-left">
     <div class="stripe"></div>
     <div class="brand">
-      <h1>Duty &amp; Fatigue Tracker <span class="version-tag">v0.37</span></h1>
+      <h1>Duty &amp; Fatigue Tracker <span class="version-tag">v0.38</span></h1>
       <p>OMY - Fatigue Management System v0.9 (CAO 48.1 Appendix 4B) — personal reference tool</p>
     </div>
   </div>
@@ -495,7 +495,8 @@
         <li>Late Night Operations are counted once per local night regardless of how many FDPs occurred, per the note under 10.13.</li>
         <li>Cumulative duty windows clip entries to the window boundary and merge overlapping entries, so a duty straddling the 7- or 14-day cutoff counts only for the portion inside it.</li>
         <li>The Time Line's "required rest" band only follows a rostered Standby period, anchored at the later of the standby's own end or the end of any NFD/FDP that started during it (Table 10 base by completion time, plus extra for an FDP running over 12 hrs, using an extension, or an increased FDP's 12-hour floor). Shortfalls show as a red hatched "rest conflict" band. Standalone FDPs with no enclosing standby don't get a rest band on the Time Line.</li>
-        <li>The Off-Duty Period tile in Live Status checks rest after the most recent FDP or standby as of the day being viewed (not just standby periods, unlike the Time Line's per-standby view) — the two are worth reading together rather than expecting them to always agree. It only ever looks at what's most recent for the selected day; it does not surface older unresolved shortfalls from further back in your history. The 14-day/21-day requirements in Tables 9 and 11 are still <b>not</b> checked anywhere.</li>
+        <li>The Off-Duty Period tile in Live Status checks rest after the most recent FDP or standby as of the day being viewed (not just standby periods, unlike the Time Line's per-standby view) — the two are worth reading together rather than expecting them to always agree. It only ever looks at what's most recent for the selected day; it does not surface older unresolved shortfalls from further back in your history.</li>
+        <li><b>Preceding Rest (10.12.2)</b> checks whether at least one qualifying off-duty period occurred somewhere in the trailing 14 days (36h including 2 local nights, Table 9) or, failing that, the trailing 21 days (72h including 3 local nights). Live mode checks as if you were starting a new duty right now; Historic mode checks as of the most recent FDP/standby that had actually commenced by that day; Future can't be meaningfully checked.</li>
         <li>The Duty tile's maximum is a local convention, not a rule from the manual: Table 6 is defined against FDP start time, and this applies it to the standby start time instead. Treat it as a rough reference only.</li>
         <li>A KSS score of 7 recorded at either the start or end of an FDP adds a mandatory 3-hour rest (10.5) shown above the line on the Time Line, immediately after that task. Any NFD or FDP starting during that window is flagged as a conflict, same as the other rest-conflict bands.</li>
         <li>Split duty's "as if commenced by a new FCM" constraint (10.8.1) is not checked, and the reduction of a calculated off-duty period to 12 hours (10.12.3) is not modelled.</li>
@@ -976,6 +977,57 @@ function lastOfType(all, type, asOf){
   list = list.sort((a,b)=> entryDates(b).start - entryDates(a).start);
   return list[0] || null;
 }
+
+/* ---------------- 10.12.2 Before Commencing an FDP or Standby (Preceding) ---------------- */
+// Before commencing any FDP or standby, there must have been at least one
+// qualifying off-duty period at some point in the trailing 14 days (36h,
+// including 2 local nights — Table 9), or failing that, in the trailing 21
+// days (72h, including 3 local nights). This scans backward from a given
+// reference moment for the nearest qualifying gap between logged duty
+// (FDP/NFD/STANDBY) periods.
+function precedingRestCheck(refDate, all){
+  const ivs = [];
+  for(const e of all){
+    if(!['FDP','NFD','STANDBY'].includes(e.type)) continue;
+    const {start, end} = entryDates(e);
+    ivs.push({start: start.getTime(), end: end.getTime()});
+  }
+  const merged = mergeIntervals(ivs);
+  const gaps = [];
+  for(let i=1;i<merged.length;i++){
+    const gs = merged[i-1].end, ge = merged[i].start;
+    if(ge > gs) gaps.push({start: gs, end: ge});
+  }
+  const relevant = gaps.filter(g => g.end <= refDate.getTime());
+
+  const window14 = refDate.getTime() - 336*3600000;
+  const q14 = relevant.filter(g => g.end >= window14
+    && (g.end-g.start)/3600000 >= 36
+    && localNightsInGap(new Date(g.start), new Date(g.end)) >= 2);
+  if(q14.length){
+    const best = q14.sort((a,b)=> b.end - a.end)[0];
+    return { satisfied:true, via:'14-day', gapEnd: new Date(best.end) };
+  }
+
+  const window21 = refDate.getTime() - 504*3600000;
+  const q21 = relevant.filter(g => g.end >= window21
+    && (g.end-g.start)/3600000 >= 72
+    && localNightsInGap(new Date(g.start), new Date(g.end)) >= 3);
+  if(q21.length){
+    const best = q21.sort((a,b)=> b.end - a.end)[0];
+    return { satisfied:true, via:'21-day', gapEnd: new Date(best.end) };
+  }
+
+  return { satisfied:false };
+}
+// The most recently COMMENCED FDP or Standby as of a reference moment —
+// distinct from lastOfType(single type), since 10.12.2 applies to either.
+function mostRecentDutyCommencement(all, asOf){
+  const candidates = all.filter(e => (e.type==='FDP' || e.type==='STANDBY')
+    && entryDates(e).start.getTime() <= asOf.getTime());
+  if(!candidates.length) return null;
+  return candidates.sort((a,b)=> entryDates(b).start - entryDates(a).start)[0];
+}
 // Sum of FDP + NFD duration for entries whose start falls within a given
 // standby period. Overlapping tasks are merged before summing (a new task
 // tasked within the 30-min post-landing tail of the previous one will
@@ -1154,6 +1206,24 @@ function minGaugeHTML(label, actual, required, unit, sub, state){
       </div>
       <div class="gauge-value">${fmtHrs(actual)}<small> / ${fmtHrs(required)} ${unit} min</small></div>
       <div class="gauge-track"><div class="gauge-fill ${zone}" style="width:${p}%"></div></div>
+      <div class="gauge-sub">${sub}</div>
+    </div>`;
+}
+// Boolean pass/fail compliance tile (no numeric value/max to compare, unlike the other gauges).
+function statusGaugeHTML(label, state, valueText, sub){
+  // state: 'ok' | 'violation' | 'pending'
+  let zone, flagHTML = '', textColor = '';
+  if(state === 'violation'){ zone='zone-red'; flagHTML='<div class="gauge-flag">Shortfall</div>'; textColor='color:var(--red);'; }
+  else if(state === 'pending'){ zone='zone-pending'; textColor='color:var(--muted);'; }
+  else { zone='zone-green'; textColor='color:var(--green);'; }
+  return `
+    <div class="gauge ${state==='violation' ? 'flag-over':''}">
+      <div class="gauge-top">
+        <div class="gauge-label">${label}</div>
+        ${flagHTML}
+      </div>
+      <div class="gauge-value" style="font-size:18px; ${textColor}">${valueText}</div>
+      <div class="gauge-track"><div class="gauge-fill ${zone}" style="width:100%"></div></div>
       <div class="gauge-sub">${sub}</div>
     </div>`;
 }
@@ -1423,6 +1493,32 @@ function renderDashboard(){
     }
   } else {
     html += minGaugeHTML('Off-Duty Period', 0, 10, 'hrs', 'No FDP or standby logged yet', 'pending');
+  }
+
+  // 10.12.2 Preceding Rest — before commencing an FDP or standby, at least one
+  // qualifying off-duty period must have occurred somewhere in the trailing
+  // 14 (or failing that, 21) days. 'live' checks as if starting duty right
+  // now (most actionable); 'historic' checks as of the last duty that
+  // actually commenced by that day; 'future' can't be meaningfully checked.
+  if(mode === 'future'){
+    html += statusGaugeHTML('Preceding Rest (10.12.2)', 'pending', 'N/A', 'Cannot be checked for a future date');
+  } else {
+    const checkPoint = mode==='live' ? nowReal : now;
+    const refDuty = mode==='live' ? null : mostRecentDutyCommencement(entries, now);
+    if(mode!=='live' && !refDuty){
+      html += statusGaugeHTML('Preceding Rest (10.12.2)', 'pending', 'N/A', 'No FDP or standby logged yet');
+    } else {
+      const pr = precedingRestCheck(checkPoint, entries);
+      const contextLabel = mode==='live' ? 'if starting duty right now' : `before ${refDuty.type} starting ${refDuty.startTime}`;
+      if(pr.satisfied){
+        const gapEndStr = pr.gapEnd.toLocaleDateString([], {day:'2-digit', month:'short'});
+        html += statusGaugeHTML('Preceding Rest (10.12.2)', 'ok', 'Satisfied',
+          `Qualifying rest found via the ${pr.via} rule (ended ${gapEndStr}) — ${contextLabel}`);
+      } else {
+        html += statusGaugeHTML('Preceding Rest (10.12.2)', 'violation', 'Not satisfied',
+          `No 36h/2-night break in the trailing 14 days, nor 72h/3-night break in the trailing 21 days — ${contextLabel}`);
+      }
+    }
   }
 
   // 7-day cumulative duty vs 40/60 cap
