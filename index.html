@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Duty & Fatigue Tracker v0.36 — CAO 48.1 App 4B</title>
+<title>Duty & Fatigue Tracker v0.37 — CAO 48.1 App 4B</title>
 <style>
   :root{
     --bg:#0b0e13;
@@ -278,9 +278,10 @@
       <input type="password" id="auth-password" autocomplete="current-password" />
     </div>
     <div id="authError" style="display:none; color:var(--red); font-size:12px; margin-bottom:10px;"></div>
+    <div id="authInfo" style="display:none; color:var(--green); font-size:12px; margin-bottom:10px;"></div>
     <button class="btn" id="authLoginBtn" style="margin-bottom:8px;">Sign In</button>
-    <button class="btn btn-ghost" id="authSignupBtn">Create Account</button>
-    <div class="hint" style="margin-top:14px; text-align:center;">Use the same email/password on every device to keep your data in sync.</div>
+    <button class="btn btn-ghost" id="authResetBtn">Forgot Password?</button>
+    <div class="hint" style="margin-top:14px; text-align:center;">Accounts are added by the tracker owner — contact them if you need access. Use the same email/password on every device to keep your data in sync.</div>
   </div>
 </div>
 
@@ -291,7 +292,7 @@
   <div class="topbar-left">
     <div class="stripe"></div>
     <div class="brand">
-      <h1>Duty &amp; Fatigue Tracker <span class="version-tag">v0.36</span></h1>
+      <h1>Duty &amp; Fatigue Tracker <span class="version-tag">v0.37</span></h1>
       <p>OMY - Fatigue Management System v0.9 (CAO 48.1 Appendix 4B) — personal reference tool</p>
     </div>
   </div>
@@ -500,6 +501,7 @@
         <li>Split duty's "as if commenced by a new FCM" constraint (10.8.1) is not checked, and the reduction of a calculated off-duty period to 12 hours (10.12.3) is not modelled.</li>
         <li>The orange marker line on today's Time Line shows the max FDP end time for the current, open, or a hypothetical now-started FDP. Yellow extension-limit lines only appear when an actual open FDP has an extension type selected on it — they're not shown as a generic "what's available" hint.</li>
         <li>An FDP logged with "Task still in progress" ticked has no end time yet — its duration, timeline band, and all totals stay live and keep growing until you edit it to add the actual end time. The "Must land by" banner and the marker lines above both use this open entry as their reference the moment one exists.</li>
+        <li>Per the FDP definition (ends 30 min after the last landing, if later than duty completion), the "Must land by" time shown is the true FDP max end minus 30 minutes — it's when the aircraft needs to be on the ground, not when the FDP clock itself expires. The true FDP max end time (which the 30 minutes is subtracted from) is shown in the banner's fine print, and the orange/yellow Time Line marker lines still show that true, unadjusted FDP max end.</li>
         <li>If an FDP starts less than 2 hours after the previous FDP in the same standby ends (including a zero or overlapping gap), it's treated as a continuation of the same unbroken duty period rather than a fresh FDP — its Table 6 lookup, day-shift 2200 cap, and "Must land by" deadline all anchor to when that continuous duty period actually began, not to this individual entry's own start time. The Duty tile merges overlapping tasks the same way, so it stays consistent with LIVE FDP.</li>
         <li>An open task left un-closed for more than 14 hours triggers a red warning on the banner and an "OPEN Xh ⚠" badge in the Duty Log, since an open FDP's duration keeps growing forever until closed and can otherwise silently distort every cumulative total. Having more than one open FDP at once also triggers its own warning listing them, since that's normally a data-entry slip.</li>
         <li>Saving checks for entries added by another device since this one last loaded and preserves them, rather than blindly overwriting — protects against losing data if you're using this on two devices close together. It can't resolve two devices editing the exact same entry at the same moment (last save wins for that entry) — full conflict resolution would need real-time listeners.</li>
@@ -1179,10 +1181,16 @@ function openTaskBannerHTML(openEntry, all){
   const nowReal = new Date();
   const calc = computeMaxFDP(openEntry, all);
   const anchor = calc.chainStart;
-  const deadline = new Date(anchor.getTime() + calc.max*3600000);
+  const fdpMaxEnd = new Date(anchor.getTime() + calc.max*3600000);
+  // The FDP itself doesn't end at touchdown — it continues 30 min after the
+  // last landing (per the FDP definition). "Must land by" is a practical
+  // prompt for when the aircraft needs to be on the ground, so it's the true
+  // FDP max end time minus that 30-minute post-landing allowance.
+  const mustLandBy = new Date(fdpMaxEnd.getTime() - 30*60000);
   const elapsed = (nowReal.getTime() - anchor.getTime())/3600000;
-  const remaining = calc.max - elapsed;
-  const deadlineStr = deadline.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', hour12:false});
+  const remaining = (mustLandBy.getTime() - nowReal.getTime())/3600000;
+  const deadlineStr = mustLandBy.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', hour12:false});
+  const fdpMaxEndStr = fdpMaxEnd.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', hour12:false});
   const startStr = start.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', hour12:false});
   const isContinuation = anchor.getTime() !== start.getTime();
   // How long THIS entry has literally been sitting open, regardless of chain/max —
@@ -1191,7 +1199,7 @@ function openTaskBannerHTML(openEntry, all){
   const entryElapsed = (nowReal.getTime() - start.getTime()) / 3600000;
   const stale = entryElapsed > 14;
   let color, statusText;
-  if(remaining <= 0){ color = 'var(--red)'; statusText = `Exceeded max FDP by ${fmtHrs(Math.abs(remaining))}h`; }
+  if(remaining <= 0){ color = 'var(--red)'; statusText = `Past must-land-by time by ${fmtHrs(Math.abs(remaining))}h`; }
   else if(remaining <= 1){ color = 'var(--red)'; statusText = `${fmtHrs(remaining)}h remaining — land soon`; }
   else if(remaining <= 2){ color = 'var(--amber)'; statusText = `${fmtHrs(remaining)}h remaining`; }
   else { color = 'var(--green)'; statusText = `${fmtHrs(remaining)}h remaining`; }
@@ -1204,6 +1212,7 @@ function openTaskBannerHTML(openEntry, all){
     const anchorStr = anchor.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', hour12:false});
     adj.push(`continuation of duty starting ${anchorStr} — no genuine rest break beforehand`);
   }
+  adj.push(`FDP max end ${fdpMaxEndStr} (incl. 30 min post-landing)`);
   const staleWarning = stale
     ? `<div style="font-size:12px; color:var(--red); font-weight:700; margin-top:8px;">⚠ This task has been open for ${fmtHrs(entryElapsed)}h — check it wasn't left open by mistake and close it out if it's actually finished.</div>`
     : '';
@@ -2195,8 +2204,16 @@ function showAuthError(msg){
 function clearAuthError(){
   document.getElementById('authError').style.display = 'none';
 }
+function showAuthInfo(msg){
+  const el = document.getElementById('authInfo');
+  el.textContent = msg;
+  el.style.display = 'block';
+}
+function clearAuthInfo(){
+  document.getElementById('authInfo').style.display = 'none';
+}
 document.getElementById('authLoginBtn').addEventListener('click', async ()=>{
-  clearAuthError();
+  clearAuthError(); clearAuthInfo();
   const email = document.getElementById('auth-email').value.trim();
   const password = document.getElementById('auth-password').value;
   if(!email || !password){ showAuthError('Enter your email and password.'); return; }
@@ -2206,16 +2223,15 @@ document.getElementById('authLoginBtn').addEventListener('click', async ()=>{
     showAuthError(e.message || 'Sign in failed.');
   }
 });
-document.getElementById('authSignupBtn').addEventListener('click', async ()=>{
-  clearAuthError();
+document.getElementById('authResetBtn').addEventListener('click', async ()=>{
+  clearAuthError(); clearAuthInfo();
   const email = document.getElementById('auth-email').value.trim();
-  const password = document.getElementById('auth-password').value;
-  if(!email || !password){ showAuthError('Enter an email and password.'); return; }
-  if(password.length < 6){ showAuthError('Password must be at least 6 characters.'); return; }
+  if(!email){ showAuthError('Enter your email above first, then click Forgot Password.'); return; }
   try{
-    await auth.createUserWithEmailAndPassword(email, password);
+    await auth.sendPasswordResetEmail(email);
+    showAuthInfo(`Password reset email sent to ${email} — check your inbox.`);
   }catch(e){
-    showAuthError(e.message || 'Account creation failed.');
+    showAuthError(e.message || 'Could not send reset email.');
   }
 });
 document.getElementById('signOutBtn').addEventListener('click', async ()=>{
