@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Duty & Fatigue Tracker v0.46 — CAO 48.1 App 4B</title>
+<title>Duty & Fatigue Tracker v0.47 — CAO 48.1 App 4B</title>
 <style>
   :root{
     --bg:#0b0e13;
@@ -292,7 +292,7 @@
   <div class="topbar-left">
     <div class="stripe"></div>
     <div class="brand">
-      <h1>Duty &amp; Fatigue Tracker <span class="version-tag">v0.46</span></h1>
+      <h1>Duty &amp; Fatigue Tracker <span class="version-tag">v0.47</span></h1>
       <p>OMY - Fatigue Management System v0.9 (CAO 48.1 Appendix 4B) — personal reference tool</p>
     </div>
   </div>
@@ -1402,6 +1402,28 @@ function hypotheticalFDPIfStartedNow(all){
 function hypotheticalMaxIfStartedNow(all){
   return hypotheticalFDPIfStartedNow(all).max;
 }
+// NFD reduction owed to a hypothetical "if an FDP started right now" moment,
+// counting only NFD time that hasn't already been attributed to a real FDP's
+// own backward-looking window — i.e. NFD occurring strictly after the most
+// recently completed real FDP. Without this cutoff, re-scanning the full 8h
+// window from "now" would double-count an earlier NFD that an earlier real
+// FDP already had its own max reduced for.
+function trailingLiveNFDReduction(all, sinceExclusive){
+  const now = new Date();
+  const windowStart = new Date(now.getTime() - 8*3600000);
+  const cutoff = sinceExclusive ? sinceExclusive.getTime() : -Infinity;
+  let sum = 0;
+  for(const e of all){
+    if(e.type !== 'NFD') continue;
+    const {start:es, end:ee} = entryDates(e);
+    if(ee.getTime() <= cutoff) continue; // already accounted for by a prior real FDP
+    const ovStart = Math.max(es.getTime(), windowStart.getTime(), cutoff);
+    const ovEnd = Math.min(ee.getTime(), now.getTime());
+    if(ovEnd > ovStart) sum += (ovEnd-ovStart)/3600000;
+  }
+  if(sum <= 0) return 0;
+  return Math.max(0.5, sum);
+}
 // Combined stats for all FDPs within a standby period: value = merged FDP time
 // (overlaps counted once), max = Table 6 base (by standby start) minus each
 // FDP's 10.3 NFD reduction plus each FDP's split-duty rest credit. Same idea
@@ -1418,6 +1440,12 @@ function hypotheticalMaxIfStartedNow(all){
 // same function, e.g. a finished standby that only ever had an NFD in it),
 // there's no real "now" moment within that day to anchor a hypothetical FDP
 // to, so past days keep the plain base-max, unreduced.
+//
+// Same idea applies when FDPs already exist: in live mode, an NFD logged
+// AFTER the most recent real FDP ended (but before now) has no later FDP to
+// attach its reduction to yet, so it was silently ignored too. trailingLiveNFDReduction
+// picks up only that not-yet-attributed trailing NFD time and folds it in on
+// top of the real per-FDP reductions already summed by combinedFDPStats.
 function periodFDPStats(standby, all){
   const { mode } = getStatusReference();
   if(!standby){
@@ -1434,7 +1462,18 @@ function periodFDPStats(standby, all){
     const hypo = hypotheticalFDPIfStartedNow(all);
     return { value: 0, max: hypo.max, totalReduction: hypo.reduction, totalSplitRest: 0 };
   }
-  return combinedFDPStats(fdps, all, sbStart);
+  const base = combinedFDPStats(fdps, all, sbStart);
+  if(fdps.length > 0 && mode === 'live'){
+    const lastRealEnd = fdps.reduce((acc,e)=>{
+      const {end} = entryDates(e);
+      return end.getTime() > acc.getTime() ? end : acc;
+    }, entryDates(fdps[0]).end);
+    const trailing = trailingLiveNFDReduction(all, lastRealEnd);
+    if(trailing > 0){
+      return { value: base.value, max: base.max - trailing, totalReduction: base.totalReduction + trailing, totalSplitRest: base.totalSplitRest };
+    }
+  }
+  return base;
 }
 function combinedFDPStats(fdps, all, baseTimeEntry){
   const ivs = fdps.map(e=>{ const {start,end} = entryDates(e); return {start:start.getTime(), end:end.getTime()}; });
