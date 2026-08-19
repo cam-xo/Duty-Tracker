@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Duty & Fatigue Tracker v0.48 — CAO 48.1 App 4B</title>
+<title>Duty & Fatigue Tracker v0.49 — CAO 48.1 App 4B</title>
 <style>
   :root{
     --bg:#0b0e13;
@@ -292,7 +292,7 @@
   <div class="topbar-left">
     <div class="stripe"></div>
     <div class="brand">
-      <h1>Duty &amp; Fatigue Tracker <span class="version-tag">v0.48</span></h1>
+      <h1>Duty &amp; Fatigue Tracker <span class="version-tag">v0.49</span></h1>
       <p>OMY - Fatigue Management System v0.9 (CAO 48.1 Appendix 4B) — personal reference tool</p>
     </div>
   </div>
@@ -692,14 +692,22 @@ function isLateNight(e){
 }
 
 /* ---------------- NFD reduction ---------------- */
-function nfdReductionHours(entry, all){
+// sinceExclusive (optional): when computing reduction for a later FDP in a
+// sequence, don't count NFD time that's already been attributed to an
+// earlier FDP's own reduction. Without this, two FDPs close enough together
+// that their independent 8h lookback windows both reach the same NFD period
+// each get credit for it, and the combined pool (which just sums each FDP's
+// reduction) ends up deducting more than the NFD time that actually happened.
+function nfdReductionHours(entry, all, sinceExclusive){
   const {start} = entryDates(entry);
   const windowStart = new Date(start.getTime() - 8*3600000);
+  const cutoff = sinceExclusive ? sinceExclusive.getTime() : -Infinity;
   let sum = 0;
   for(const e of all){
     if(e.type !== 'NFD') continue;
     const {start:es, end:ee} = entryDates(e);
-    const ovStart = Math.max(es.getTime(), windowStart.getTime());
+    if(ee.getTime() <= cutoff) continue;
+    const ovStart = Math.max(es.getTime(), windowStart.getTime(), cutoff);
     const ovEnd = Math.min(ee.getTime(), start.getTime());
     if(ovEnd > ovStart) sum += (ovEnd-ovStart)/3600000;
   }
@@ -1503,12 +1511,21 @@ function combinedFDPStats(fdps, all, baseTimeEntry){
   if(baseTimeEntry){
     const [baseMax] = fdpTableValues(baseTimeEntry, 'single');
     max = baseMax;
-    for(const fdp of fdps){
-      const r = nfdReductionHours(fdp, all);
+    // Process chronologically and exclude NFD time already attributed to an
+    // earlier FDP's own reduction (via nfdReductionHours' sinceExclusive) —
+    // otherwise two FDPs close enough together for their independent 8h
+    // lookback windows to both reach the same NFD period each claim a
+    // reduction for it, and the combined total ends up exceeding the actual
+    // NFD hours logged.
+    const sortedFdps = [...fdps].sort((a,b)=> entryDates(a).start - entryDates(b).start);
+    let consumedUntil = null;
+    for(const fdp of sortedFdps){
+      const r = nfdReductionHours(fdp, all, consumedUntil);
       const s = autoSplitRestCredit(fdp, all);
       totalReduction += r;
       totalSplitRest += s;
       max += s - r;
+      consumedUntil = entryDates(fdp).end;
     }
   } else {
     // No shared standby to anchor a single Table 6 lookup — sum each FDP's own corrected max.
