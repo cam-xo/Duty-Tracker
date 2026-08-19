@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Duty & Fatigue Tracker v0.47 — CAO 48.1 App 4B</title>
+<title>Duty & Fatigue Tracker v0.48 — CAO 48.1 App 4B</title>
 <style>
   :root{
     --bg:#0b0e13;
@@ -292,7 +292,7 @@
   <div class="topbar-left">
     <div class="stripe"></div>
     <div class="brand">
-      <h1>Duty &amp; Fatigue Tracker <span class="version-tag">v0.47</span></h1>
+      <h1>Duty &amp; Fatigue Tracker <span class="version-tag">v0.48</span></h1>
       <p>OMY - Fatigue Management System v0.9 (CAO 48.1 Appendix 4B) — personal reference tool</p>
     </div>
   </div>
@@ -1175,6 +1175,26 @@ function previousDutyBefore(all, beforeStart){
   return prev;
 }
 
+// The start of the unbroken duty block containing `anchor` — i.e. merge every
+// FDP/STANDBY/NFD interval that touches or overlaps another, and return where
+// that merged block begins. Needed because previousDutyBefore(lastDutyish.start)
+// on its own can land mid-shift: e.g. an FDP that starts right as an earlier
+// FDP's trailing NFD ends has zero gap before it, so it isn't a real rest
+// period — it's just the same duty day continuing (further duty within a
+// standby, or an FDP running past its standby's nominal end). Walking back to
+// the true start of the whole contiguous block first means previousDutyBefore
+// is then asked about the actual PRECEDING duty period, not an internal
+// transition inside the current one.
+function dutyBlockStart(all, anchor){
+  const anchorStart = entryDates(anchor).start.getTime();
+  const ivs = all
+    .filter(e => e.type==='FDP' || e.type==='STANDBY' || e.type==='NFD')
+    .map(e => { const {start,end} = entryDates(e); return {start:start.getTime(), end:end.getTime()}; });
+  const merged = mergeIntervals(ivs);
+  const block = merged.find(iv => anchorStart >= iv.start && anchorStart <= iv.end);
+  return block ? new Date(block.start) : entryDates(anchor).start;
+}
+
 // All ODP conflicts across the dataset, most recent first.
 function allODPConflicts(all){
   const out = [];
@@ -1767,7 +1787,7 @@ function renderDashboard(){
   // what's actually knowable and useful on both Live and Historic/Future views.
   const lastDutyish = [lastFDP, lastStandby].filter(Boolean)
     .sort((a,b)=> entryDates(b).end - entryDates(a).end)[0];
-  const prevDuty = lastDutyish ? previousDutyBefore(entries, entryDates(lastDutyish).start) : null;
+  const prevDuty = lastDutyish ? previousDutyBefore(entries, dutyBlockStart(entries, lastDutyish)) : null;
   const st = prevDuty ? odpStatus(prevDuty, entries) : null;
   if(st){
     if(st.actual === null){
