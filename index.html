@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Duty & Fatigue Tracker v0.45 — CAO 48.1 App 4B</title>
+<title>Duty & Fatigue Tracker v0.46 — CAO 48.1 App 4B</title>
 <style>
   :root{
     --bg:#0b0e13;
@@ -292,7 +292,7 @@
   <div class="topbar-left">
     <div class="stripe"></div>
     <div class="brand">
-      <h1>Duty &amp; Fatigue Tracker <span class="version-tag">v0.45</span></h1>
+      <h1>Duty &amp; Fatigue Tracker <span class="version-tag">v0.46</span></h1>
       <p>OMY - Fatigue Management System v0.9 (CAO 48.1 Appendix 4B) — personal reference tool</p>
     </div>
   </div>
@@ -1387,26 +1387,53 @@ function multipleOpenWarningHTML(openList){
 }
 
 /* ---------------- LIVE / CURRENT / PAST FDP tile ---------------- */
-function hypotheticalMaxIfStartedNow(all){
+// Full computeMaxFDP() result (max, reduction, etc.) for a hypothetical
+// zero-length FDP starting right now — used whenever the tile has no actual
+// FDP entry to anchor to yet, so the max shown already reflects anything
+// (like a preceding NFD) that would apply to an FDP commencing this instant.
+function hypotheticalFDPIfStartedNow(all){
   const now = new Date();
   const dateStr = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0') + '-' + String(now.getDate()).padStart(2,'0');
   const hh = String(now.getHours()).padStart(2,'0');
   const mm = String(now.getMinutes()).padStart(2,'0');
   const hypo = { id:'__hypo_fdp_tile__', type:'FDP', date:dateStr, startTime:`${hh}:${mm}`, endTime:`${hh}:${mm}`, pilotType:'single', increasedFDP:false, extType:'none', extHours:0 };
-  return computeMaxFDP(hypo, all).max;
+  return computeMaxFDP(hypo, all);
+}
+function hypotheticalMaxIfStartedNow(all){
+  return hypotheticalFDPIfStartedNow(all).max;
 }
 // Combined stats for all FDPs within a standby period: value = merged FDP time
 // (overlaps counted once), max = Table 6 base (by standby start) minus each
 // FDP's 10.3 NFD reduction plus each FDP's split-duty rest credit. Same idea
 // as the Duty tile (FDP+NFD=max) rearranged as FDP=max-NFD.
+//
+// In LIVE mode, when no FDP has been logged yet (fdps.length===0) — e.g. an
+// NFD has been entered but no FDP has started — fall back to the same "as if
+// an FDP started right now" hypothetical the no-standby case already used.
+// The per-FDP loop below only sums nfdReductionHours() across EXISTING fdps,
+// so with zero fdps it silently applied zero reduction even when a preceding
+// NFD had already been logged within the standby, showing the un-reduced
+// Table 6 base as if the NFD hadn't happened. This "as if starting now"
+// fallback only makes sense in live mode — for past days (viewed via the
+// same function, e.g. a finished standby that only ever had an NFD in it),
+// there's no real "now" moment within that day to anchor a hypothetical FDP
+// to, so past days keep the plain base-max, unreduced.
 function periodFDPStats(standby, all){
-  if(!standby) return { value: 0, max: hypotheticalMaxIfStartedNow(all), totalReduction: 0, totalSplitRest: 0 };
+  const { mode } = getStatusReference();
+  if(!standby){
+    const hypo = hypotheticalFDPIfStartedNow(all);
+    return { value: 0, max: hypo.max, totalReduction: hypo.reduction, totalSplitRest: 0 };
+  }
   const {start: sbStart, end: sbEnd} = entryDates(standby);
   const fdps = all.filter(e=>{
     if(e.type!=='FDP') return false;
     const {start} = entryDates(e);
     return start.getTime() >= sbStart.getTime() && start.getTime() <= sbEnd.getTime();
   });
+  if(fdps.length === 0 && mode === 'live'){
+    const hypo = hypotheticalFDPIfStartedNow(all);
+    return { value: 0, max: hypo.max, totalReduction: hypo.reduction, totalSplitRest: 0 };
+  }
   return combinedFDPStats(fdps, all, sbStart);
 }
 function combinedFDPStats(fdps, all, baseTimeEntry){
