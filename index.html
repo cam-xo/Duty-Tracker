@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Duty & Fatigue Tracker v0.49 — CAO 48.1 App 4B</title>
+<title>Duty & Fatigue Tracker v0.50 — CAO 48.1 App 4B</title>
 <style>
   :root{
     --bg:#0b0e13;
@@ -292,7 +292,7 @@
   <div class="topbar-left">
     <div class="stripe"></div>
     <div class="brand">
-      <h1>Duty &amp; Fatigue Tracker <span class="version-tag">v0.49</span></h1>
+      <h1>Duty &amp; Fatigue Tracker <span class="version-tag">v0.50</span></h1>
       <p>OMY - Fatigue Management System v0.9 (CAO 48.1 Appendix 4B) — personal reference tool</p>
     </div>
   </div>
@@ -717,7 +717,7 @@ function nfdReductionHours(entry, all, sinceExclusive){
 
 /* ---------------- Standby grouping (shared) ---------------- */
 function getStandbys(all){
-  return all.filter(e=>e.type==='STANDBY').map(e=>({ id:e.id, ...entryDates(e) }));
+  return all.filter(e=>e.type==='STANDBY').map(e=>({ id:e.id, ...effectiveStandbyWindow(e, all) }));
 }
 function standbyContaining(entryStart, standbys){
   return standbys.find(s => entryStart.getTime() >= s.start.getTime() && entryStart.getTime() <= s.end.getTime()) || null;
@@ -785,7 +785,7 @@ function findEnclosingStandbyEntry(entry, all){
   const {start} = entryDates(entry);
   return all.find(e => {
     if(e.type !== 'STANDBY') return false;
-    const {start: ss, end: se} = entryDates(e);
+    const {start: ss, end: se} = effectiveStandbyWindow(e, all);
     return start.getTime() >= ss.getTime() && start.getTime() <= se.getTime();
   }) || null;
 }
@@ -909,6 +909,39 @@ function mergeIntervals(ivs){
     }
   }
   return out;
+}
+// A standby's *effective* window — its own [start,end] expanded to include
+// any FDP/NFD that touches or overlaps it, even one that starts before the
+// standby's own logged start time (e.g. called in early — real duty began
+// before the standby entry says it did). Every "does this FDP belong to this
+// standby" check elsewhere used a strict start>=standbyStart boundary, which
+// silently orphaned an early-starting FDP from its own standby's stats
+// (Live FDP, Flight Time, Duty) and from the timeline's highlighted range.
+// Expansion stops at another standby's own bounds so two genuinely separate,
+// back-to-back standbies (zero gap between them) can never bleed into each
+// other's FDPs.
+function effectiveStandbyWindow(standby, all){
+  const {start: sbStart, end: sbEnd} = entryDates(standby);
+  let winStart = sbStart.getTime(), winEnd = sbEnd.getTime();
+  const otherStandbys = all.filter(e => e.type==='STANDBY' && e.id !== standby.id)
+    .map(e => { const {start,end} = entryDates(e); return {start:start.getTime(), end:end.getTime()}; });
+  const dutyEntries = all.filter(e => e.type==='FDP' || e.type==='NFD')
+    .map(e => { const {start,end} = entryDates(e); return {start:start.getTime(), end:end.getTime()}; });
+  let changed = true;
+  while(changed){
+    changed = false;
+    for(const iv of dutyEntries){
+      if(iv.start <= winEnd && iv.end >= winStart){
+        const newStart = Math.min(winStart, iv.start);
+        const newEnd = Math.max(winEnd, iv.end);
+        const crossesOther = otherStandbys.some(o => newStart < o.end && newEnd > o.start);
+        if(!crossesOther && (newStart < winStart || newEnd > winEnd)){
+          winStart = newStart; winEnd = newEnd; changed = true;
+        }
+      }
+    }
+  }
+  return { start: new Date(winStart), end: new Date(winEnd) };
 }
 function sumDutyWindow(all, hoursBack, ref){
   const cutoff = ref.getTime() - hoursBack*3600000;
@@ -1103,7 +1136,7 @@ function mostRecentDutyCommencement(all, asOf){
 // double-counted).
 function dutyPeriodHours(all, standbyEntry){
   if(!standbyEntry) return 0;
-  const {start, end} = entryDates(standbyEntry);
+  const {start, end} = effectiveStandbyWindow(standbyEntry, all);
   const ivs = [];
   for(const e of all){
     if(e.type!=='FDP' && e.type!=='NFD') continue;
@@ -1480,7 +1513,7 @@ function periodFDPStats(standby, all){
     const hypo = hypotheticalFDPIfStartedNow(all);
     return { value: 0, max: hypo.max, totalReduction: hypo.reduction, totalSplitRest: 0 };
   }
-  const {start: sbStart, end: sbEnd} = entryDates(standby);
+  const {start: sbStart, end: sbEnd} = effectiveStandbyWindow(standby, all);
   const fdps = all.filter(e=>{
     if(e.type!=='FDP') return false;
     const {start} = entryDates(e);
@@ -1617,7 +1650,7 @@ function standaloneFDPsForDay(dayDate, all){
     if(e.type!=='FDP' || e.date!==dayKey) return false;
     const {start} = entryDates(e);
     return !standbyEntries.some(s => {
-      const {start: ss, end: se} = entryDates(s);
+      const {start: ss, end: se} = effectiveStandbyWindow(s, all);
       return start.getTime()>=ss.getTime() && start.getTime()<=se.getTime();
     });
   });
@@ -1643,10 +1676,10 @@ function computeFDPTileState(all){
   return { label:'PAST FDP', empty:true, flagMultiple:false };
 }
 
-// FDPs whose start falls within a standby period (same containment rule periodFDPStats uses).
+// FDPs whose start falls within a standby's effective window (same containment rule periodFDPStats uses).
 function fdpsWithinStandby(standby, all){
   if(!standby) return [];
-  const {start: sbStart, end: sbEnd} = entryDates(standby);
+  const {start: sbStart, end: sbEnd} = effectiveStandbyWindow(standby, all);
   return all.filter(e=>{
     if(e.type!=='FDP') return false;
     const {start} = entryDates(e);
