@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Duty & Fatigue Tracker v0.51 — CAO 48.1 App 4B</title>
+<title>Duty & Fatigue Tracker v0.53 — CAO 48.1 App 4B</title>
 <style>
   :root{
     --bg:#0b0e13;
@@ -292,7 +292,7 @@
   <div class="topbar-left">
     <div class="stripe"></div>
     <div class="brand">
-      <h1>Duty &amp; Fatigue Tracker <span class="version-tag">v0.51</span></h1>
+      <h1>Duty &amp; Fatigue Tracker <span class="version-tag">v0.53</span></h1>
       <p>OMY - Fatigue Management System v0.9 (CAO 48.1 Appendix 4B) — personal reference tool</p>
     </div>
   </div>
@@ -558,35 +558,74 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.firestore();
-let currentUid = null;
 
 /* ---------------- Storage ---------------- */
+// Server state is kept live via a Firestore onSnapshot listener (attached on
+// sign-in, detached on sign-out) instead of an explicit .get() before every
+// save. Previously saveEntries() did its own read-before-write purely to
+// catch entries another device might have added since our last load/save —
+// that's exactly what a real-time listener is for, and it removes a full
+// round-trip from every single save.
+//
+// serverEntriesCache and lastLoadedIds are deliberately two SEPARATE things:
+// serverEntriesCache is just "whatever the server's latest raw doc says",
+// refreshed continuously and passively by the listener. lastLoadedIds must
+// only change at moments our in-memory `entries` variable itself was
+// actually set to match the server (end of loadEntries(), end of a
+// successful saveEntries()) — it's "what our LOCAL state has incorporated",
+// used to tell a genuinely-new remote addition apart from one we ourselves
+// deleted. Updating lastLoadedIds straight from the passive listener instead
+// would silently drop a remote addition: the listener could see it and mark
+// it "known" before our own in-memory `entries` ever actually picked it up,
+// so the next save's recovery check would wrongly treat it as an
+// intentional local deletion instead of something to recover.
+let currentUid = null;
+let serverEntriesCache = null;
 let lastLoadedIds = new Set();
+let unsubscribeEntriesListener = null;
+let entriesReadyPromise = null;
+let entriesReadyResolve = null;
+
+function attachEntriesListener(uid){
+  entriesReadyPromise = new Promise(resolve => { entriesReadyResolve = resolve; });
+  unsubscribeEntriesListener = db.collection('users').doc(uid).onSnapshot(
+    doc => {
+      const loaded = (doc.exists && Array.isArray(doc.data().entries)) ? doc.data().entries : [];
+      serverEntriesCache = loaded;
+      if(entriesReadyResolve){ entriesReadyResolve(loaded); entriesReadyResolve = null; }
+    },
+    err => {
+      console.error('Entries listener failed', err);
+      if(entriesReadyResolve){ entriesReadyResolve([]); entriesReadyResolve = null; }
+    }
+  );
+}
+function detachEntriesListener(){
+  if(unsubscribeEntriesListener){ unsubscribeEntriesListener(); unsubscribeEntriesListener = null; }
+  serverEntriesCache = null;
+  lastLoadedIds = new Set();
+  entriesReadyPromise = null;
+  entriesReadyResolve = null;
+}
 async function loadEntries(){
   try{
-    const doc = await db.collection('users').doc(currentUid).get();
-    if(doc.exists && Array.isArray(doc.data().entries)){
-      const loaded = doc.data().entries;
-      lastLoadedIds = new Set(loaded.map(e=>e.id));
-      return loaded;
-    }
-  }catch(e){ console.error('Load failed', e); }
-  lastLoadedIds = new Set();
-  return [];
+    const loaded = await entriesReadyPromise;
+    lastLoadedIds = new Set((loaded || []).map(e=>e.id));
+    return loaded || [];
+  }catch(e){ console.error('Load failed', e); lastLoadedIds = new Set(); return []; }
 }
 // Multi-device safety net: before overwriting, check whether the server has
 // entries that weren't part of our last known snapshot (i.e. added by
 // another device since we loaded) and preserve them, rather than blindly
 // overwriting with only what this device knows about. Entries deliberately
 // deleted here were already part of our last snapshot, so they're correctly
-// NOT resurrected by this check. This can't resolve two devices editing the
-// exact same entry at once (last save wins for that one entry) — full
-// conflict resolution would need real-time listeners, which felt like
-// overkill for a single-user tool.
+// NOT resurrected by this check. serverEntriesCache comes from the live
+// listener above, not a fresh read — this can still only resolve two
+// devices editing the exact same entry at once with last-write-wins for
+// that one entry, same limitation as before.
 async function saveEntries(newEntries){
   try{
-    const doc = await db.collection('users').doc(currentUid).get();
-    const serverEntries = (doc.exists && Array.isArray(doc.data().entries)) ? doc.data().entries : [];
+    const serverEntries = Array.isArray(serverEntriesCache) ? serverEntriesCache : [];
     const localIds = new Set(newEntries.map(e=>e.id));
     const merged = [...newEntries];
     let recovered = 0;
@@ -716,8 +755,24 @@ function nfdReductionHours(entry, all, sinceExclusive){
 }
 
 /* ---------------- Standby grouping (shared) ---------------- */
+// Memoized by array reference: every mutation site reassigns `entries`
+// (rather than mutating in place — see the storage section), so the same
+// reference means the same content and this cache is always safe to reuse.
+// effectiveStandbyWindow() does a fixed-point expansion over every FDP/NFD
+// in the dataset for EACH standby, and getStandbys() was being called fresh
+// on every single row of the duty log, every FDP-tile lookup, every
+// split-rest/chain calculation, etc. — recomputing the same result from
+// scratch dozens of times per render as the entry count grows. Caching it
+// once per distinct `entries` reference turns that back into one real
+// computation per render.
+let _standbysCache = null;
+let _standbysCacheKey = null;
 function getStandbys(all){
-  return all.filter(e=>e.type==='STANDBY').map(e=>({ id:e.id, ...effectiveStandbyWindow(e, all) }));
+  if(_standbysCacheKey === all) return _standbysCache;
+  const result = all.filter(e=>e.type==='STANDBY').map(e=>({ id:e.id, ...effectiveStandbyWindow(e, all) }));
+  _standbysCacheKey = all;
+  _standbysCache = result;
+  return result;
 }
 function standbyContaining(entryStart, standbys){
   return standbys.find(s => entryStart.getTime() >= s.start.getTime() && entryStart.getTime() <= s.end.getTime()) || null;
@@ -2402,7 +2457,18 @@ document.getElementById('tlDatePicker').addEventListener('change', (ev)=>{
   renderAll();
 });
 
-function renderAll(){ renderDashboard(); renderLog(); renderTimeline(); if(currentPage==='calendar') renderCalendar(); }
+// Only the visible page needs rebuilding — dashboard/log/timeline live on
+// 'current', renderCalendar() is its own separate tree. Previously this ran
+// all four unconditionally on every render, including the 30s tick, so
+// sitting on Calendar view still paid for a full dashboard/log/timeline
+// recompute every cycle for a page that wasn't even displayed.
+function renderAll(){
+  if(currentPage === 'current'){
+    renderDashboard(); renderLog(); renderTimeline();
+  } else if(currentPage === 'calendar'){
+    renderCalendar();
+  }
+}
 
 /* ---------------- Page switching ---------------- */
 function switchPage(page){
@@ -2412,7 +2478,11 @@ function switchPage(page){
   document.querySelectorAll('.page-tab').forEach(t=>{
     t.classList.toggle('active', t.getAttribute('data-page')===page);
   });
-  if(page==='calendar') renderCalendar();
+  // renderAll() now only rebuilds the visible page (see its own comment), so
+  // switching pages must explicitly refresh whichever page just became
+  // visible — otherwise a page left stale while hidden (the periodic tick
+  // skipped it) would keep showing outdated data until the next full cycle.
+  renderAll();
 }
 document.getElementById('pageTabs').addEventListener('click', (ev)=>{
   const tab = ev.target.closest('.page-tab');
@@ -2678,7 +2748,7 @@ document.getElementById('addBtn').addEventListener('click', async ()=>{
   if(editingId){
     entries = entries.map(e => String(e.id)===String(editingId) ? entry : e);
   } else {
-    entries.push(entry);
+    entries = [...entries, entry];
   }
   await saveEntries(entries);
   exitEditMode();
@@ -2731,15 +2801,17 @@ document.getElementById('importFile').addEventListener('change', async (ev)=>{
     const sig = e => `${e.type}|${e.date}|${e.startTime}|${e.endTime}`;
     const existingSignatures = new Set(entries.map(sig));
     let added = 0, skippedId = 0, skippedContent = 0;
+    const toAdd = [];
     for(const item of imported){
       if(!item || item.id === undefined) continue;
       if(existingIds.has(String(item.id))){ skippedId++; continue; }
       if(existingSignatures.has(sig(item))){ skippedContent++; continue; }
-      entries.push(item);
+      toAdd.push(item);
       existingIds.add(String(item.id));
       existingSignatures.add(sig(item));
       added++;
     }
+    entries = [...entries, ...toAdd];
     await saveEntries(entries);
     renderAll();
     const skipped = skippedId + skippedContent;
@@ -2809,17 +2881,24 @@ document.getElementById('authResetBtn').addEventListener('click', async ()=>{
   }
 });
 document.getElementById('signOutBtn').addEventListener('click', async ()=>{
+  // Belt-and-suspenders: onAuthStateChanged's signed-out branch already
+  // detaches the listener for any sign-out path (including this one, since
+  // signOut() triggers it), but detaching explicitly here too costs nothing
+  // and guards against ever relying solely on that callback firing.
+  detachEntriesListener();
   await auth.signOut();
 });
 
 /* ---------------- Init ---------------- */
 async function init(){
-  const today = new Date().toISOString().slice(0,10);
-  document.getElementById('f-date').value = today;
+  document.getElementById('f-date').value = todayISO();
   setType('STANDBY');
   entries = await loadEntries();
   renderAll();
-  setInterval(renderAll, 30000); // keep rolling windows and timeline markers fresh
+  // Lengthened from 30s: the heavy compliance/timeline recompute doesn't need
+  // to run twice as often as it actually did — the live clock below still
+  // ticks every second regardless, so the visible time never looks stale.
+  setInterval(renderAll, 60000); // keep rolling windows and timeline markers fresh
   setInterval(()=>{ document.getElementById('liveClock').textContent = new Date().toLocaleString([], {dateStyle:'medium', timeStyle:'medium', hour12:false}); }, 1000);
 }
 
@@ -2827,6 +2906,7 @@ let appInitialized = false;
 auth.onAuthStateChanged(async (user)=>{
   if(user){
     currentUid = user.uid;
+    attachEntriesListener(currentUid);
     document.getElementById('loginScreen').style.display = 'none';
     document.getElementById('appContent').style.display = '';
     if(!appInitialized){
@@ -2834,6 +2914,7 @@ auth.onAuthStateChanged(async (user)=>{
       await init();
     }
   } else {
+    detachEntriesListener();
     currentUid = null;
     appInitialized = false;
     document.getElementById('loginScreen').style.display = 'flex';
