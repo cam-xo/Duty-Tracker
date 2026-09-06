@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Duty & Fatigue Tracker v0.50 — CAO 48.1 App 4B</title>
+<title>Duty & Fatigue Tracker v0.51 — CAO 48.1 App 4B</title>
 <style>
   :root{
     --bg:#0b0e13;
@@ -292,7 +292,7 @@
   <div class="topbar-left">
     <div class="stripe"></div>
     <div class="brand">
-      <h1>Duty &amp; Fatigue Tracker <span class="version-tag">v0.50</span></h1>
+      <h1>Duty &amp; Fatigue Tracker <span class="version-tag">v0.51</span></h1>
       <p>OMY - Fatigue Management System v0.9 (CAO 48.1 Appendix 4B) — personal reference tool</p>
     </div>
   </div>
@@ -1560,6 +1560,15 @@ function combinedFDPStats(fdps, all, baseTimeEntry){
       max += s - r;
       consumedUntil = entryDates(fdp).end;
     }
+    // Same absolute ceiling computeMaxFDP() applies to a single FDP (Table 6
+    // footnote / 10.8.1 — no combination of split-duty rest or extensions
+    // ever pushes a single FDP's max past 16h). Without this, a large
+    // split-duty credit (itself uncapped — see autoSplitRestInfo) could push
+    // the pooled total for a whole standby well past what any individual FDP
+    // in it is actually allowed, e.g. a genuine ~12h overnight gap between
+    // two otherwise-separate flights being credited as if it were a
+    // qualifying split-duty rest, inflating the pool to 20+ hours.
+    max = Math.min(max, 16);
   } else {
     // No shared standby to anchor a single Table 6 lookup — sum each FDP's own corrected max.
     max = fdps.reduce((acc,e)=> acc + computeMaxFDP(e, all).max, 0);
