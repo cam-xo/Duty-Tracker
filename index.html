@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Duty & Fatigue Tracker v0.54 — CAO 48.1 App 4B</title>
+<title>Duty & Fatigue Tracker v0.55 — CAO 48.1 App 4B</title>
 <style>
   :root{
     --bg:#0b0e13;
@@ -292,7 +292,7 @@
   <div class="topbar-left">
     <div class="stripe"></div>
     <div class="brand">
-      <h1>Duty &amp; Fatigue Tracker <span class="version-tag">v0.54</span></h1>
+      <h1>Duty &amp; Fatigue Tracker <span class="version-tag">v0.55</span></h1>
       <p>OMY - Fatigue Management System v0.9 (CAO 48.1 Appendix 4B) — personal reference tool</p>
     </div>
   </div>
@@ -498,7 +498,7 @@
         <li>The Time Line's "required rest" band only follows a rostered Standby period, anchored at the later of the standby's own end or the end of any NFD/FDP that started during it (Table 10 base by completion time, plus extra for an FDP running over 12 hrs, using an extension, or an increased FDP's 12-hour floor). Shortfalls show as a red hatched "rest conflict" band. Standalone FDPs with no enclosing standby don't get a rest band on the Time Line.</li>
         <li><b>Flight Time (Shift)</b> sums flight time across every FDP overlapping the relevant standby period (today's ongoing or most recently finished one; on a past day, whichever standby's end falls on that date), or the calendar day's FDPs if no standby applies — same day-resolution rules as LIVE/CURRENT/PAST FDP. The 10h/12h shown as its "max" is the per-FDP flight time limit (10.6) shown purely as a visual size reference — there's no actual regulatory cap on total flight time per shift, so this tile can legitimately show "over" without that meaning any rule was broken.</li>
         <li>The Off-Duty Period tile in Live Status checks the rest taken <b>before</b> the most recent FDP or standby as of the day being viewed (not just standby periods, unlike the Time Line's per-standby view) — the two are worth reading together rather than expecting them to always agree. It only ever looks at the gap immediately preceding what's most recent for the selected day; it does not surface older unresolved shortfalls from further back in your history.</li>
-        <li><b>Preceding Rest (10.12.2)</b> checks whether at least one qualifying off-duty period occurred somewhere in the trailing 14 days (36h including 2 local nights, Table 9) or, failing that, the trailing 21 days (72h including 3 local nights). Live mode checks as if you were starting a new duty right now. Historic and Future modes both check against a standby that <b>starts</b> on the displayed day — if none has been entered for that day, the check simply doesn't run, since there's nothing to anchor it to.</li>
+        <li><b>Preceding Rest (10.12.2)</b> checks whether at least one qualifying off-duty period occurred somewhere in the trailing 14 days (36h including 2 local nights, Table 9) or, failing that, the trailing 21 days (72h including 3 local nights). Live mode checks as if you were starting a new duty right now. Historic and Future modes both check against whatever duty <b>starts</b> on the displayed day — a standby if one exists, otherwise the earliest FDP (e.g. a training/sim day logged without a standby) — if neither has been entered for that day, the check simply doesn't run, since there's nothing to anchor it to.</li>
         <li><b>Cumulative Fatigue Recovery (10.12.1)</b> is triggered if, in the trailing 7 days, you've had 3+ late night FDPs or used an increased FDP — once triggered, a 36h/2-local-night break is owed until one has been taken (reuses the same 36h/2-night definition as the 7-day 40h/60h cumulative duty cap decision). Shows "Not triggered" when neither condition applies.</li>
         <li>The Duty tile's maximum is a local convention, not a rule from the manual: Table 6 is defined against FDP start time, and this applies it to the standby start time instead. Treat it as a rough reference only.</li>
         <li>A KSS score of 7 recorded at either the start or end of an FDP adds a mandatory 3-hour rest (10.5) shown above the line on the Time Line, immediately after that task. Any NFD or FDP starting during that window is flagged as a conflict, same as the other rest-conflict bands.</li>
@@ -1524,8 +1524,11 @@ function hypotheticalMaxIfStartedNow(all){
 // recently completed real FDP. Without this cutoff, re-scanning the full 8h
 // window from "now" would double-count an earlier NFD that an earlier real
 // FDP already had its own max reduced for.
-function trailingLiveNFDReduction(all, sinceExclusive){
-  const now = new Date();
+// refTime defaults to the real current moment (live mode's "right now"), but
+// callers viewing a past day pass the actual end of that day's last logged
+// activity instead — see statsForFdpPool for why.
+function trailingLiveNFDReduction(all, sinceExclusive, refTime){
+  const now = refTime || new Date();
   const windowStart = new Date(now.getTime() - 8*3600000);
   const cutoff = sinceExclusive ? sinceExclusive.getTime() : -Infinity;
   let sum = 0;
@@ -1539,6 +1542,22 @@ function trailingLiveNFDReduction(all, sinceExclusive){
   }
   if(sum <= 0) return 0;
   return Math.max(0.5, sum);
+}
+// The latest end, among FDP/NFD/STANDBY entries starting at or after
+// `sinceExclusive` but within 24h of it, used as a stable stand-in for "now"
+// when computing a trailing NFD's reduction for a PAST day — see
+// statsForFdpPool. Bounded to 24h so this can never reach forward into an
+// unrelated future duty day/standby logged weeks later; it only needs to see
+// whatever happened immediately after the FDP within the same duty day.
+function latestActivityEnd(all, sinceExclusive){
+  const limit = sinceExclusive.getTime() + 24*3600000;
+  let latest = sinceExclusive;
+  for(const e of all){
+    if(e.type!=='FDP' && e.type!=='NFD' && e.type!=='STANDBY') continue;
+    const {start, end} = entryDates(e);
+    if(start.getTime() >= sinceExclusive.getTime() && start.getTime() <= limit && end.getTime() > latest.getTime()) latest = end;
+  }
+  return latest;
 }
 // Combined stats for all FDPs within a standby period: value = merged FDP time
 // (overlaps counted once), max = Table 6 base (by standby start) minus each
@@ -1563,19 +1582,35 @@ function trailingLiveNFDReduction(all, sinceExclusive){
 // picks up only that not-yet-attributed trailing NFD time and folds it in on
 // top of the real per-FDP reductions already summed by combinedFDPStats.
 //
-// Applies combinedFDPStats() to a set of already-known FDPs, then — in live
-// mode, when at least one real FDP exists — folds in any not-yet-attributed
-// trailing NFD via trailingLiveNFDReduction. Shared by both the
-// standby-anchored path and the no-standby/standalone-FDP path below, so the
-// same trailing-NFD handling applies to a real FDP whichever way it was found.
+// Applies combinedFDPStats() to a set of already-known FDPs, then folds in
+// any not-yet-attributed trailing NFD via trailingLiveNFDReduction. Shared by
+// both the standby-anchored path and the no-standby/standalone-FDP path
+// below, so the same trailing-NFD handling applies to a real FDP whichever
+// way it was found.
+//
+// This used to only run in live mode, on the assumption a past day's trailing
+// NFD (one with no later FDP that day to attach its reduction to) simply
+// wasn't relevant once the day was over. But viewed the NEXT day, "no later
+// FDP that day" is no longer a live, still-evolving situation — it's a
+// finished fact, and the reduction that was correctly showing while it was
+// still live shouldn't just disappear because nobody happened to check
+// before the day ended. So this now always applies — the only thing that
+// changes by mode is the reference point: live mode uses the real current
+// moment (so the reduction correctly decays as the 8h window ages past the
+// NFD); a past day uses the actual end of whatever happened last that day,
+// which doesn't decay just because more real-world time has passed since —
+// otherwise checking a past day's tile the next morning vs. that same
+// evening could show two different answers for something that's now a fixed
+// historical fact.
 function statsForFdpPool(fdps, all, baseTimeEntry, mode){
   const base = combinedFDPStats(fdps, all, baseTimeEntry);
-  if(fdps.length > 0 && mode === 'live'){
+  if(fdps.length > 0){
     const lastRealEnd = fdps.reduce((acc,e)=>{
       const {end} = entryDates(e);
       return end.getTime() > acc.getTime() ? end : acc;
     }, entryDates(fdps[0]).end);
-    const trailing = trailingLiveNFDReduction(all, lastRealEnd);
+    const refTime = (mode === 'live') ? new Date() : latestActivityEnd(all, lastRealEnd);
+    const trailing = trailingLiveNFDReduction(all, lastRealEnd, refTime);
     if(trailing > 0){
       return { value: base.value, max: base.max - trailing, totalReduction: base.totalReduction + trailing, totalSplitRest: base.totalSplitRest };
     }
@@ -1734,6 +1769,21 @@ function standbyStartingOnDay(dayDate, all){
   standbyEntries.sort((a,b)=> entryDates(a).start - entryDates(b).start);
   return standbyEntries[0];
 }
+// Preceding Rest (10.12.2) needs SOME duty commencing that day to anchor its
+// check to. A standby is the usual anchor, but a day logged as bare FDP/NFD
+// entries (no STANDBY at all — e.g. a training/sim day) still has a duty
+// commencing that day: the earliest FDP. Falling back to a standby-only
+// check meant the tile went permanently blank ("no standby starts on this
+// day") for exactly the kind of day that most needs checking.
+function dutyStartingOnDay(dayDate, all){
+  const standby = standbyStartingOnDay(dayDate, all);
+  if(standby) return standby;
+  const dayKey = dateKey(dayDate);
+  const fdps = all.filter(e => e.type==='FDP' && e.date === dayKey);
+  if(!fdps.length) return null;
+  fdps.sort((a,b)=> entryDates(a).start - entryDates(b).start);
+  return fdps[0];
+}
 function standaloneFDPsForDay(dayDate, all){
   const standbyEntries = all.filter(e => e.type==='STANDBY');
   const dayKey = dateKey(dayDate);
@@ -1762,7 +1812,17 @@ function computeFDPTileState(all){
   if(standby) return { label:'PAST FDP', empty:false, flagMultiple, ...periodFDPStats(standby, all) };
 
   const standalone = standaloneFDPsForDay(dayDate, all);
-  if(standalone.length) return { label:'PAST FDP', empty:false, flagMultiple:false, ...combinedFDPStats(standalone, all, null) };
+  if(standalone.length){
+    // Route through the same pooling + trailing-NFD logic periodFDPStats uses
+    // for a live no-standby day (anchor to the earliest FDP's own start),
+    // rather than a bare combinedFDPStats(...,null) call — that older path
+    // used each FDP's own independent computeMaxFDP() (correct for a single
+    // FDP viewed alone, but blind to any NFD trailing after the last one,
+    // and blind to totalReduction/totalSplitRest entirely for display).
+    const sorted = standalone.slice().sort((a,b)=> entryDates(a).start - entryDates(b).start);
+    const anchorStart = entryDates(sorted[0]).start;
+    return { label:'PAST FDP', empty:false, flagMultiple:false, ...statsForFdpPool(sorted, all, anchorStart, mode) };
+  }
 
   return { label:'PAST FDP', empty:true, flagMultiple:false };
 }
@@ -1957,9 +2017,11 @@ function renderDashboard(){
   // 10.12.2 Preceding Rest — before commencing an FDP or standby, at least one
   // qualifying off-duty period must have occurred somewhere in the trailing
   // 14 (or failing that, 21) days. 'live' checks as if starting duty right
-  // now (most actionable). 'historic' and 'future' both check against a
-  // standby that STARTS on the displayed day — if none has been entered for
-  // that day, the check simply doesn't run (nothing to anchor it to).
+  // now (most actionable). 'historic' and 'future' both check against
+  // whatever duty STARTS on the displayed day — a standby if one exists,
+  // otherwise the earliest FDP (e.g. a training/sim day logged without a
+  // standby) — if neither exists for that day, the check simply doesn't run
+  // (nothing to anchor it to).
   if(mode === 'live'){
     const pr = precedingRestCheck(nowReal, entries);
     if(pr.satisfied){
@@ -1972,13 +2034,13 @@ function renderDashboard(){
     }
   } else {
     const dayDate = new Date(timelineCenterDate);
-    const standby = standbyStartingOnDay(dayDate, entries);
-    if(!standby){
-      html += statusGaugeHTML('Preceding Rest (10.12.2)', 'pending', 'N/A', 'No standby period starts on this day');
+    const dutyEntry = dutyStartingOnDay(dayDate, entries);
+    if(!dutyEntry){
+      html += statusGaugeHTML('Preceding Rest (10.12.2)', 'pending', 'N/A', 'No standby or FDP starts on this day');
     } else {
-      const checkPoint = entryDates(standby).start;
+      const checkPoint = entryDates(dutyEntry).start;
       const pr = precedingRestCheck(checkPoint, entries);
-      const contextLabel = `before Standby starting ${standby.startTime}`;
+      const contextLabel = `before ${dutyEntry.type==='STANDBY'?'Standby':'FDP'} starting ${dutyEntry.startTime}`;
       if(pr.satisfied){
         const gapEndStr = pr.gapEnd.toLocaleDateString([], {day:'2-digit', month:'short'});
         html += statusGaugeHTML('Preceding Rest (10.12.2)', 'ok', 'Satisfied',
