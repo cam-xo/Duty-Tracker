@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Duty & Fatigue Tracker v0.53 — CAO 48.1 App 4B</title>
+<title>Duty & Fatigue Tracker v0.54 — CAO 48.1 App 4B</title>
 <style>
   :root{
     --bg:#0b0e13;
@@ -292,7 +292,7 @@
   <div class="topbar-left">
     <div class="stripe"></div>
     <div class="brand">
-      <h1>Duty &amp; Fatigue Tracker <span class="version-tag">v0.53</span></h1>
+      <h1>Duty &amp; Fatigue Tracker <span class="version-tag">v0.54</span></h1>
       <p>OMY - Fatigue Management System v0.9 (CAO 48.1 Appendix 4B) — personal reference tool</p>
     </div>
   </div>
@@ -1562,9 +1562,47 @@ function trailingLiveNFDReduction(all, sinceExclusive){
 // attach its reduction to yet, so it was silently ignored too. trailingLiveNFDReduction
 // picks up only that not-yet-attributed trailing NFD time and folds it in on
 // top of the real per-FDP reductions already summed by combinedFDPStats.
+//
+// Applies combinedFDPStats() to a set of already-known FDPs, then — in live
+// mode, when at least one real FDP exists — folds in any not-yet-attributed
+// trailing NFD via trailingLiveNFDReduction. Shared by both the
+// standby-anchored path and the no-standby/standalone-FDP path below, so the
+// same trailing-NFD handling applies to a real FDP whichever way it was found.
+function statsForFdpPool(fdps, all, baseTimeEntry, mode){
+  const base = combinedFDPStats(fdps, all, baseTimeEntry);
+  if(fdps.length > 0 && mode === 'live'){
+    const lastRealEnd = fdps.reduce((acc,e)=>{
+      const {end} = entryDates(e);
+      return end.getTime() > acc.getTime() ? end : acc;
+    }, entryDates(fdps[0]).end);
+    const trailing = trailingLiveNFDReduction(all, lastRealEnd);
+    if(trailing > 0){
+      return { value: base.value, max: base.max - trailing, totalReduction: base.totalReduction + trailing, totalSplitRest: base.totalSplitRest };
+    }
+  }
+  return base;
+}
 function periodFDPStats(standby, all){
   const { mode } = getStatusReference();
   if(!standby){
+    // No STANDBY entry at all for this day (e.g. a training/sim day logged
+    // as bare FDP/NFD entries) doesn't mean nothing happened — there can
+    // still be real FDPs already logged today. This used to skip straight to
+    // a pure "as if an FDP started right now" hypothetical regardless,
+    // ignoring any FDP that had already happened: a completed training FDP's
+    // duty time didn't count toward value, and a later NFD's reduction was
+    // computed against an empty day instead of against the real FDP that
+    // preceded it. Mirror the standby-anchored path: if standalone FDPs
+    // exist for the day, pool them (anchored to the first one's own start,
+    // in place of a standby start) the same way; only fall back to the pure
+    // hypothetical when the day genuinely has no FDP in it yet.
+    const dayDate = (mode === 'live') ? new Date() : new Date(timelineCenterDate);
+    const standaloneFdps = standaloneFDPsForDay(dayDate, all);
+    if(standaloneFdps.length > 0){
+      const sorted = standaloneFdps.slice().sort((a,b)=> entryDates(a).start - entryDates(b).start);
+      const anchorStart = entryDates(sorted[0]).start;
+      return statsForFdpPool(sorted, all, anchorStart, mode);
+    }
     const hypo = hypotheticalFDPIfStartedNow(all);
     return { value: 0, max: hypo.max, totalReduction: hypo.reduction, totalSplitRest: 0 };
   }
@@ -1578,18 +1616,7 @@ function periodFDPStats(standby, all){
     const hypo = hypotheticalFDPIfStartedNow(all);
     return { value: 0, max: hypo.max, totalReduction: hypo.reduction, totalSplitRest: 0 };
   }
-  const base = combinedFDPStats(fdps, all, sbStart);
-  if(fdps.length > 0 && mode === 'live'){
-    const lastRealEnd = fdps.reduce((acc,e)=>{
-      const {end} = entryDates(e);
-      return end.getTime() > acc.getTime() ? end : acc;
-    }, entryDates(fdps[0]).end);
-    const trailing = trailingLiveNFDReduction(all, lastRealEnd);
-    if(trailing > 0){
-      return { value: base.value, max: base.max - trailing, totalReduction: base.totalReduction + trailing, totalSplitRest: base.totalSplitRest };
-    }
-  }
-  return base;
+  return statsForFdpPool(fdps, all, sbStart, mode);
 }
 function combinedFDPStats(fdps, all, baseTimeEntry){
   const ivs = fdps.map(e=>{ const {start,end} = entryDates(e); return {start:start.getTime(), end:end.getTime()}; });
