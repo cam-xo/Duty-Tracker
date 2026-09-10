@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Duty & Fatigue Tracker v0.55 — CAO 48.1 App 4B</title>
+<title>Duty & Fatigue Tracker v0.56 — CAO 48.1 App 4B</title>
 <style>
   :root{
     --bg:#0b0e13;
@@ -292,7 +292,7 @@
   <div class="topbar-left">
     <div class="stripe"></div>
     <div class="brand">
-      <h1>Duty &amp; Fatigue Tracker <span class="version-tag">v0.55</span></h1>
+      <h1>Duty &amp; Fatigue Tracker <span class="version-tag">v0.56</span></h1>
       <p>OMY - Fatigue Management System v0.9 (CAO 48.1 Appendix 4B) — personal reference tool</p>
     </div>
   </div>
@@ -1212,9 +1212,9 @@ function flightTimeLimitFor(entry){
 // plus, for an FDP: time the FDP exceeded 12 hrs, or 1 hr per 30 min (or part)
 // extended past the FDP limit. An increased FDP requires at least 12 hrs (10.6.1).
 // Displacement time is zero — all operations are in a single time zone.
-function requiredODPHours(entry, all){
+function requiredODPHours(entry, all, effectiveEnd){
   if(!entry || (entry.type!=='FDP' && entry.type!=='STANDBY')) return 0;
-  const {end} = entryDates(entry);
+  const end = effectiveEnd || entryDates(entry).end;
   let hours = minODPHours(end);
   if(entry.type === 'FDP'){
     const dur = durationHours(entry);
@@ -1232,10 +1232,10 @@ function requiredODPHours(entry, all){
 
 // Returns {required, actual, conflictWith} for the rest owed after an entry,
 // where conflictWith is the next duty/standby that starts too soon.
-function odpStatus(entry, all){
-  const required = requiredODPHours(entry, all);
+function odpStatus(entry, all, effectiveEnd){
+  const end = effectiveEnd || entryDates(entry).end;
+  const required = requiredODPHours(entry, all, end);
   if(required <= 0) return null;
-  const {end} = entryDates(entry);
   const restEnd = end.getTime() + required*3600000;
   // Find the next Standby/FDP/NFD that begins after this entry ends.
   let next = null;
@@ -1253,19 +1253,42 @@ function odpStatus(entry, all){
   return { required, actual, conflictWith: actual < required ? next : null, restEnd };
 }
 
+// The latest end among FDP/NFD/STANDBY entries sharing the same calendar
+// date as `entry` — e.g. a check-flight FDP followed later the same day by
+// dead-head travel logged as NFD is still one continuous duty period, even
+// though there's a short, non-qualifying gap between the flying finishing
+// and the travel starting. Rest doesn't begin until the LAST thing that
+// happened that day finishes, not just whichever entry happens to be the
+// FDP/STANDBY specifically — without this, odpStatus's "next" search would
+// find that same-day trailing NFD as if it were a fresh duty commencing
+// after a real rest period, when it's actually just later in the same day.
+function sameDayDutyEnd(entry, all){
+  const dayKey = entry.date;
+  let latest = entryDates(entry).end;
+  for(const e of all){
+    if(e.type!=='FDP' && e.type!=='NFD' && e.type!=='STANDBY') continue;
+    if(e.date !== dayKey) continue;
+    const {end} = entryDates(e);
+    if(end.getTime() > latest.getTime()) latest = end;
+  }
+  return latest;
+}
+
 // The FDP/Standby that most recently ENDED at or before a given start time —
 // i.e. the duty whose rest period led into `beforeStart`. Used to evaluate
 // "was the off-duty period taken before this duty commenced sufficient",
 // which is the actually-known, backward-looking half of Table 10/11 —
 // as opposed to odpStatus(entry,...) which looks forward from an entry's end
 // and is 'pending' for any duty whose next entry hasn't happened yet.
+// Compares/qualifies using sameDayDutyEnd (see above) rather than the raw
+// entry's own end, for the same reason.
 function previousDutyBefore(all, beforeStart){
-  let prev = null;
+  let prev = null, prevEffEnd = null;
   for(const e of all){
     if(e.type !== 'FDP' && e.type !== 'STANDBY') continue;
-    const {end: ee} = entryDates(e);
-    if(ee.getTime() <= beforeStart.getTime()){
-      if(!prev || ee.getTime() > entryDates(prev).end.getTime()) prev = e;
+    const effEnd = sameDayDutyEnd(e, all);
+    if(effEnd.getTime() <= beforeStart.getTime()){
+      if(!prev || effEnd.getTime() > prevEffEnd.getTime()){ prev = e; prevEffEnd = effEnd; }
     }
   }
   return prev;
@@ -1296,7 +1319,7 @@ function allODPConflicts(all){
   const out = [];
   for(const e of all){
     if(e.type!=='FDP' && e.type!=='STANDBY') continue;
-    const st = odpStatus(e, all);
+    const st = odpStatus(e, all, sameDayDutyEnd(e, all));
     if(st && st.conflictWith) out.push({ entry:e, ...st });
   }
   return out.sort((a,b)=> entryDates(b.entry).end - entryDates(a.entry).end);
@@ -1989,7 +2012,7 @@ function renderDashboard(){
   const lastDutyish = [lastFDP, lastStandby].filter(Boolean)
     .sort((a,b)=> entryDates(b).end - entryDates(a).end)[0];
   const prevDuty = lastDutyish ? previousDutyBefore(entries, dutyBlockStart(entries, lastDutyish)) : null;
-  const st = prevDuty ? odpStatus(prevDuty, entries) : null;
+  const st = prevDuty ? odpStatus(prevDuty, entries, sameDayDutyEnd(prevDuty, entries)) : null;
   if(st){
     if(st.actual === null){
       // Shouldn't normally occur (prevDuty was found precisely because it
