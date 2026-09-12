@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Duty & Fatigue Tracker v0.56 — CAO 48.1 App 4B</title>
+<title>Duty & Fatigue Tracker v0.58 — CAO 48.1 App 4B</title>
 <style>
   :root{
     --bg:#0b0e13;
@@ -292,7 +292,7 @@
   <div class="topbar-left">
     <div class="stripe"></div>
     <div class="brand">
-      <h1>Duty &amp; Fatigue Tracker <span class="version-tag">v0.56</span></h1>
+      <h1>Duty &amp; Fatigue Tracker <span class="version-tag">v0.58</span></h1>
       <p>OMY - Fatigue Management System v0.9 (CAO 48.1 Appendix 4B) — personal reference tool</p>
     </div>
   </div>
@@ -1821,7 +1821,26 @@ function standaloneFDPsForDay(dayDate, all){
 }
 function computeFDPTileState(all){
   const { mode } = getStatusReference();
-  if(mode === 'future') return { label:'PLANNED FDP', empty:true };
+  // For a future day, "starting" is what matters (a standby or FDP that
+  // begins that day) — the mirror image of past mode's "ending" anchor
+  // (pastDayStandby), since we're looking forward at what's planned rather
+  // than backward at what was completed. This used to unconditionally return
+  // empty regardless of what was actually scheduled, so entering a planned
+  // FDP for a future date and scrolling the timeline to it never showed
+  // anything — the tile simply never looked at future-dated entries at all.
+  if(mode === 'future'){
+    const dayDate = new Date(timelineCenterDate);
+    const standby = standbyStartingOnDay(dayDate, all);
+    if(standby) return { label:'PLANNED FDP', empty:false, flagMultiple:false, ...periodFDPStats(standby, all) };
+
+    const standalone = standaloneFDPsForDay(dayDate, all);
+    if(standalone.length){
+      const sorted = standalone.slice().sort((a,b)=> entryDates(a).start - entryDates(b).start);
+      const anchorStart = entryDates(sorted[0]).start;
+      return { label:'PLANNED FDP', empty:false, flagMultiple:false, ...statsForFdpPool(sorted, all, anchorStart, mode) };
+    }
+    return { label:'PLANNED FDP', empty:true, flagMultiple:false };
+  }
 
   if(mode === 'live'){
     const { standby, state } = findTodayStandbyContext(all);
@@ -1871,7 +1890,22 @@ function sumFlightTimeWithLimit(fdps){
 }
 function computeShiftFlightTimeState(all){
   const { mode } = getStatusReference();
-  if(mode === 'future') return { empty:true };
+  // Same bug the FDP tile had: this used to unconditionally return empty for
+  // any future day regardless of what's actually planned. Mirror the FDP
+  // tile's future-mode fix — a standby STARTING that day, else the earliest
+  // standalone FDP, else genuinely empty.
+  if(mode === 'future'){
+    const dayDate = new Date(timelineCenterDate);
+    const standby = standbyStartingOnDay(dayDate, all);
+    if(standby){
+      const fdps = fdpsWithinStandby(standby, all);
+      if(!fdps.length) return { empty:true };
+      return { empty:false, ...sumFlightTimeWithLimit(fdps) };
+    }
+    const standalone = standaloneFDPsForDay(dayDate, all);
+    if(standalone.length) return { empty:false, ...sumFlightTimeWithLimit(standalone) };
+    return { empty:true };
+  }
 
   if(mode === 'live'){
     const { standby } = findTodayStandbyContext(all);
@@ -1965,8 +1999,18 @@ function renderDashboard(){
   // Duty-tile context above (currently-active standby > standby finishing
   // this day > this day's standalone FDPs), not simply the last FDP ever
   // logged, which could be from a previous, already-finished shift.
+  //
+  // Future mode needs its own lookup rather than reusing dutyCtx — that
+  // context deliberately returns no standby/day for future dates (the Duty
+  // tile intentionally shows "not applicable" there), but this tile SHOULD
+  // show a planned FDP's flight time in advance, the same way the FDP tile
+  // itself now does.
   let contextFDPs = [];
-  if(dutyCtx.standby) contextFDPs = fdpsWithinStandby(dutyCtx.standby, entries);
+  if(mode === 'future'){
+    const futureDayDate = new Date(timelineCenterDate);
+    const futureStandby = standbyStartingOnDay(futureDayDate, entries);
+    contextFDPs = futureStandby ? fdpsWithinStandby(futureStandby, entries) : standaloneFDPsForDay(futureDayDate, entries);
+  } else if(dutyCtx.standby) contextFDPs = fdpsWithinStandby(dutyCtx.standby, entries);
   else if(dutyCtx.dayDate) contextFDPs = standaloneFDPsForDay(dutyCtx.dayDate, entries);
   const lastFDPInContext = contextFDPs.length
     ? contextFDPs.slice().sort((a,b)=> entryDates(b).start - entryDates(a).start)[0]
@@ -2128,12 +2172,22 @@ function renderDashboard(){
   const incr7 = countIncreasedWindow(entries, 168, now);
   html += gaugeHTML('Increased FDPs (7d)', incr7, 2, 'used', 'Max 2 increased-limit FDPs per 7-day period', incr7>2);
 
-  // Last Standby vs 24h
-  if(lastStandby){
-    const dur = durationHours(lastStandby);
+  // Last Standby vs 24h — scoped to the day being viewed (live: current/most
+  // recent today; past: the standby ending that day; future: the standby
+  // starting that day), same as the Duty/FDP tiles above it. Previously this
+  // used `lastStandby` (lastOfType, the globally most-recently-commenced
+  // standby as of the reference time) regardless of what day was on screen —
+  // so browsing a day with no standby of its own (e.g. a training day) still
+  // silently showed some earlier, unrelated standby's duration as if it were
+  // relevant to the day in view.
+  const displayStandby = mode === 'future'
+    ? standbyStartingOnDay(new Date(timelineCenterDate), entries)
+    : dutyCtx.standby;
+  if(displayStandby){
+    const dur = durationHours(displayStandby);
     html += gaugeHTML('Last Standby', dur, 24, 'hrs max', 'Standby period must not exceed 24 continuous hours', dur>24);
   } else {
-    html += gaugeHTML('Last Standby', 0, 24, 'hrs max', 'No standby logged yet', false);
+    html += gaugeHTML('Last Standby', 0, 24, 'hrs max', 'No standby logged for this day', false);
   }
 
   grid.innerHTML = html;
