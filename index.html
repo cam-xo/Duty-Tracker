@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Duty & Fatigue Tracker v0.58 — CAO 48.1 App 4B</title>
+<title>Duty & Fatigue Tracker v0.59 — CAO 48.1 App 4B</title>
 <style>
   :root{
     --bg:#0b0e13;
@@ -292,7 +292,7 @@
   <div class="topbar-left">
     <div class="stripe"></div>
     <div class="brand">
-      <h1>Duty &amp; Fatigue Tracker <span class="version-tag">v0.58</span></h1>
+      <h1>Duty &amp; Fatigue Tracker <span class="version-tag">v0.59</span></h1>
       <p>OMY - Fatigue Management System v0.9 (CAO 48.1 Appendix 4B) — personal reference tool</p>
     </div>
   </div>
@@ -399,7 +399,7 @@
         <div class="field">
           <label><input type="checkbox" id="f-increased" style="width:auto; margin-right:6px;" />Using increased FDP limit (max 2 per 7 days)</label>
         </div>
-        <div class="hint" style="margin-top:-4px; margin-bottom:12px;">Split duty rest is now calculated automatically — any gap between duty entries within the same standby period counts as rest on sleeping accommodation.</div>
+        <div class="hint" style="margin-top:-4px; margin-bottom:12px;">Log each flying task as its own FDP entry — tasks are grouped into one FDP until you've had an off-duty period, and any rest of 2+ hours between them is credited automatically.</div>
         <div class="row2">
           <div class="field">
             <label>Extension</label>
@@ -488,8 +488,8 @@
       <summary>What this tool does &amp; doesn't do</summary>
       <ul>
         <li>Calculations follow the FDP, cumulative duty/flight time, LNO and standby limits set out in your FMS manual (based on CAO 48.1 Appendix 4B).</li>
-        <li>Max FDP is looked up from Table 6 by start time, then adjusted for split duty rest, extensions and prior NFD, capped at 16 hrs.</li>
-        <li>Split duty rest is calculated automatically: a gap of at least 2 consecutive hours immediately after a prior FDP (not NFD) within the same standby period qualifies, extending the later FDP's limit. It is not applied to an increased FDP, per 10.6.1. Per 10.8.1's second condition, the remaining (post-rest) portion is also capped at what a fresh Table 6 lookup would give "as if commenced by a new FCM" at the resumption time — flagged in the Must Land By banner when it applies.</li>
+        <li><b>How an FDP is measured (10.6, 10.8, 10.10):</b> each FDP entry is a <b>task</b>. The FDP itself starts at the first tasking and runs until the end of its last task, and every task stays in the same FDP until a real off-duty period separates them — standby is not off duty (1.3.1), and 10.10 requires an off-duty period after a call-out FDP before another FDP can start. So the time between tasks counts as FDP time, and a rest of 2+ hours extends the limit instead (10.8.1 caps "the FDP period including the rest period" at 16h; Tables 7 and 8 both measure the extended limit from the original start with the rest inside it). The limit is Table 6 by the first tasking time, plus split duty rest and any extension, less NFD in the 8 hours before the FDP started, capped at 16h.</li>
+        <li>Split duty rest is calculated automatically: any gap of at least 2 consecutive hours between tasks qualifies, measured from the end of the task (which already includes the 30 min after landing, per 10.8.1). Standby counts as rest — it is free of all duties with sleeping accommodation — but NFD does not, so an NFD splits a gap into shorter pieces. It is not applied to an increased FDP, per 10.6.1. Per 10.8.1's second condition, the remaining portion after the most recent qualifying rest is also capped at a fresh Table 6 lookup at the resumption time.</li>
         <li>Mandatory rest bands on the Time Line now cover two separate triggers per 10.5, taking whichever is larger (not additive): a KSS score of 7 gives a fixed 3h rest; a KSS score of 8 or 9 gives the Table 10 base (8h/10h by completion time) — the manual's own reference for KSS>=8 ("Minimum ODP as per Table 4") is a documented error, since Table 4 is just the descriptive 1-9 scale with no ODP data, so Table 10 is used instead. Separately, any FDP that actually needed an extension, was increased, or organically ran past 12h gets the full Table 10 formula (base + extension component), same as 10.12.3. Each band is anchored to that specific task's own end and flags a conflict if the containing standby is still logged as running into the rest window, or if anything else starts during it.</li>
         <li><b>Conservative assumption:</b> within that rest gap, only the portion falling between 2100–0600 is treated as genuine sleeping accommodation (full credit, per Table 7) — it's unrealistic to assume someone actually sleeps during the day even though sleeping accommodation is available. The portion falling 0600–2100 is treated as resting accommodation only (half credit, capped at 2 hours total, per Table 8). The full raw gap (unweighted) is still what counts at 50% toward cumulative duty per Table 12.</li>
         <li>The 40-vs-60-hour 7-day duty cap checks for a 36+ hour off-duty gap that fully contains at least 2 local nights (an 8+ hour break covering 2200–0500), based on your rosters being in a single time zone.</li>
@@ -502,17 +502,17 @@
         <li><b>Cumulative Fatigue Recovery (10.12.1)</b> is triggered if, in the trailing 7 days, you've had 3+ late night FDPs or used an increased FDP — once triggered, a 36h/2-local-night break is owed until one has been taken (reuses the same 36h/2-night definition as the 7-day 40h/60h cumulative duty cap decision). Shows "Not triggered" when neither condition applies.</li>
         <li>The Duty tile's maximum is a local convention, not a rule from the manual: Table 6 is defined against FDP start time, and this applies it to the standby start time instead. Treat it as a rough reference only.</li>
         <li>A KSS score of 7 recorded at either the start or end of an FDP adds a mandatory 3-hour rest (10.5) shown above the line on the Time Line, immediately after that task. Any NFD or FDP starting during that window is flagged as a conflict, same as the other rest-conflict bands.</li>
-        <li>Split duty's "as if commenced by a new FCM" constraint (10.8.1) is not checked, and the reduction of a calculated off-duty period to 12 hours (10.12.3) is not modelled.</li>
-        <li>The orange marker line on today's Time Line shows the max FDP end time for the current, open, or a hypothetical now-started FDP. Yellow extension-limit lines only appear when an actual open FDP has an extension type selected on it — they're not shown as a generic "what's available" hint.</li>
+        <li>The reduction of a calculated off-duty period to 12 hours (10.12.3) is not modelled.</li>
+        <li>The orange marker line on today's Time Line shows the max FDP end time for the FDP a tasking right now would fall into — which continues the current FDP if no off-duty period has been taken since its last task, or starts a fresh one if it has. The red line is simply the current time. Yellow extension-limit lines only appear when an actual open FDP has an extension type selected on it — they're not shown as a generic "what's available" hint.</li>
         <li>An FDP logged with "Task still in progress" ticked has no end time yet — its duration, timeline band, and all totals stay live and keep growing until you edit it to add the actual end time. The "Must land by" banner and the marker lines above both use this open entry as their reference the moment one exists.</li>
         <li>Per the FDP definition (ends 30 min after the last landing, if later than duty completion), the "Must land by" time shown is the true FDP max end minus 30 minutes — it's when the aircraft needs to be on the ground, not when the FDP clock itself expires. The true FDP max end time (which the 30 minutes is subtracted from) is shown in the banner's fine print, and the orange/yellow Time Line marker lines still show that true, unadjusted FDP max end.</li>
-        <li>If an FDP starts less than 2 hours after the previous FDP in the same standby ends (including a zero or overlapping gap), it's treated as a continuation of the same unbroken duty period rather than a fresh FDP — its Table 6 lookup, day-shift 2200 cap, and "Must land by" deadline all anchor to when that continuous duty period actually began, not to this individual entry's own start time. The Duty tile merges overlapping tasks the same way, so it stays consistent with LIVE FDP.</li>
+        <li>The FDP tile, the orange marker line and the "Must land by" banner all use the same FDP calculation, so they agree. The Duty Log's per-row OK/Over status still uses the older per-task calculation and can differ where an FDP spans several tasks.</li>
         <li>An open task left un-closed for more than 14 hours triggers a red warning on the banner and an "OPEN Xh ⚠" badge in the Duty Log, since an open FDP's duration keeps growing forever until closed and can otherwise silently distort every cumulative total. Having more than one open FDP at once also triggers its own warning listing them, since that's normally a data-entry slip.</li>
         <li>Saving checks for entries added by another device since this one last loaded and preserves them, rather than blindly overwriting — protects against losing data if you're using this on two devices close together. It can't resolve two devices editing the exact same entry at the same moment (last save wins for that entry) — full conflict resolution would need real-time listeners.</li>
         <li>Import Backup now also catches duplicates by matching type/date/start/end time, not just by ID — so re-importing the same duty under a freshly generated ID (e.g. from a different export) won't create a second copy.</li>
-        <li>Per 10.6, an open FDP within a Day Shift standby (detected from the standby's notes containing "Day Shift") has its max capped at 2200 — the "Must land by" banner and orange marker line reflect this. Select the <b>Day Shift past 22:00</b> extension option once Duty Officer/Chief Pilot approval is given to lift the cap back to the normal calculated limit, shown as a yellow marker line.</li>
+        <li>Per 10.6, an FDP within a Day Shift standby (detected from the standby's notes containing "Day Shift") has its end capped at 2200 — the FDP tile, "Must land by" banner and orange marker line all reflect this. Select the <b>Day Shift past 22:00</b> extension option once Duty Officer/Chief Pilot approval is given to lift the cap back to the normal calculated limit, shown as a yellow marker line.</li>
         <li>This is a personal support tool. Air Maestro remains your company's official record per the FMS manual — always log there too.</li>
-        <li>Data is stored privately to your account only, in this artifact's storage — not shared with anyone else.</li>
+        <li>Data is stored privately to your own account in Firebase — not shared with anyone else.</li>
         <li>Use <b>Export Backup</b> periodically to save your entries to a file, and <b>Import Backup</b> to restore them — this protects you if data ever fails to carry over when this tool is updated.</li>
       </ul>
     </details>
@@ -676,6 +676,16 @@ function entryDates(e){
 function durationHours(e){
   const {start,end} = entryDates(e);
   return (end - start) / 3600000;
+}
+// Clock time, with the weekday added when it lands on a different date than
+// the thing it belongs to — an FDP that starts at 1800 can easily run out the
+// next morning, and a bare "09:30" there would be read as today.
+function fmtMarkerTime(when, ref){
+  const t = when.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', hour12:false});
+  if(ref && when.toDateString() !== ref.toDateString()){
+    return `${when.toLocaleDateString([], {weekday:'short'})} ${t}`;
+  }
+  return t;
 }
 function fmtHrs(h){
   if(h === null || h === undefined || isNaN(h)) return '—';
@@ -951,6 +961,237 @@ function computeMaxFDP(entry, all){
 
 /* ---------------- Rolling window sums ---------------- */
 // Merge overlapping [start,end] intervals so overlapping duty isn't double-counted.
+/* ---------------- FDP model (OMY 1.3.1, 10.3, 10.6, 10.8, 10.10) ---------------- */
+// Each FDP entry is a TASK. The FDP itself starts at the first tasking and ends
+// at the end of its last task (1.3.1; 10.3 notes: "the FDP commences at the
+// time the tasking is received"; 12.1 records tasks and split duty as they
+// happen). Tasks stay in the SAME FDP until a genuine off-duty period separates
+// them — standby is not off duty (1.3.1 Off-Duty Period: "free of all duties
+// and Standby"), and 10.10/10.2 require an off-duty period after a call-out FDP
+// before another FDP may start. So every task in a shift is one FDP.
+//
+// That means the time between tasks counts as FDP time, and a rest of 2+
+// consecutive hours extends the limit instead of being deducted from the total:
+// 10.8.1 caps "the FDP period including the rest period" at 16h, and the
+// manual's own Tables 7 and 8 measure the extended limit from the original
+// start with the rest inside it (0800 + 12h + 2.5h rest = 2230; 0600 + 11.5h
+// + 2h credit = 1930). Counting the rest out of the total AND adding it to the
+// limit would credit it twice.
+//
+// NFD between tasks is duty: it neither extends the limit nor breaks the FDP,
+// and it already consumes the clock, so it isn't deducted again. Only NFD in
+// the 8 hours before the FDP starts reduces the limit (10.3).
+const FDP_ODP_BREAK_HOURS = 8; // shortest minimum ODP in Table 10
+
+function dutyCoverIntervals(all){
+  return mergeIntervals(all
+    .filter(e => e.type==='STANDBY' || e.type==='NFD' || e.type==='FDP')
+    .map(e => { const d = entryDates(e); return { start:d.start.getTime(), end:d.end.getTime() }; }));
+}
+// Longest stretch of [fromMs,toMs] covered by neither duty nor standby — i.e.
+// genuinely free of all duties AND standby, the only thing that can be an ODP.
+function longestFreeGapHours(fromMs, toMs, cover){
+  if(toMs <= fromMs) return 0;
+  let cursor = fromMs, best = 0;
+  for(const iv of cover){
+    if(iv.end <= cursor) continue;
+    if(iv.start >= toMs) break;
+    if(iv.start > cursor) best = Math.max(best, iv.start - cursor);
+    cursor = Math.max(cursor, iv.end);
+    if(cursor >= toMs) break;
+  }
+  if(cursor < toMs) best = Math.max(best, toMs - cursor);
+  return best/3600000;
+}
+// Parts of [fromMs,toMs] free of duty. Standby counts as rest here: a standby
+// period is free of all duties with access to sleeping accommodation (1.3.1),
+// which is exactly what a split duty rest period requires.
+function restSegments(fromMs, toMs, dutyIvs){
+  const out = [];
+  let cursor = fromMs;
+  for(const iv of dutyIvs){
+    if(iv.end <= cursor) continue;
+    if(iv.start >= toMs) break;
+    if(iv.start > cursor) out.push({ start:cursor, end:Math.min(iv.start, toMs) });
+    cursor = Math.max(cursor, iv.end);
+    if(cursor >= toMs) break;
+  }
+  if(cursor < toMs) out.push({ start:cursor, end:toMs });
+  return out.filter(s => s.end > s.start);
+}
+function virtualTaskAt(when){
+  const dateStr = when.getFullYear()+'-'+String(when.getMonth()+1).padStart(2,'0')+'-'+String(when.getDate()).padStart(2,'0');
+  const hh = String(when.getHours()).padStart(2,'0'), mm = String(when.getMinutes()).padStart(2,'0');
+  const e = { id:'__hypothetical__', type:'FDP', date:dateStr, startTime:`${hh}:${mm}`, endTime:`${hh}:${mm}`,
+              pilotType:'single', increasedFDP:false, extType:'none', extHours:0, flightTime:0 };
+  return { e, start:new Date(when.getTime()), end:new Date(when.getTime()), virtual:true };
+}
+// Group every logged task into the FDP it belongs to.
+function groupFDPTasks(all, asOf){
+  const cover = dutyCoverIntervals(all);
+  const tasks = all.filter(e => e.type==='FDP')
+    .map(e => { const d = entryDates(e); return { e, start:d.start, end:d.end }; })
+    .filter(t => !asOf || t.start.getTime() <= asOf.getTime())
+    .sort((a,b)=> a.start - b.start || a.end - b.end);
+  const groups = [];
+  let cur = null;
+  for(const t of tasks){
+    if(!cur){ cur = { tasks:[t], start:t.start, end:t.end }; continue; }
+    const overlapping = t.start.getTime() <= cur.end.getTime();
+    const freeGap = overlapping ? 0 : longestFreeGapHours(cur.end.getTime(), t.start.getTime(), cover);
+    // A gap shorter than the shortest possible minimum ODP can't legally have
+    // ended the FDP, so the task continues it. Whether a longer gap actually
+    // met the required 8/10h is the Off-Duty Period tile's job, not this one's.
+    if(freeGap < FDP_ODP_BREAK_HOURS){
+      cur.tasks.push(t);
+      if(t.end.getTime() > cur.end.getTime()) cur.end = t.end;
+    } else {
+      groups.push(cur);
+      cur = { tasks:[t], start:t.start, end:t.end };
+    }
+  }
+  if(cur) groups.push(cur);
+  return groups;
+}
+function fdpGroupForTask(groups, entry){
+  return groups.find(g => g.tasks.some(t => String(t.e.id) === String(entry.id))) || null;
+}
+// Would a tasking right now continue this FDP? It would, unless an off-duty
+// period has been taken since its last task (10.10).
+function fdpOpenAt(group, all, asOf){
+  if(group.tasks.some(t => isOpenEntry(t.e))) return true;
+  if(asOf.getTime() <= group.end.getTime()) return true;
+  return longestFreeGapHours(group.end.getTime(), asOf.getTime(), dutyCoverIntervals(all)) < FDP_ODP_BREAK_HOURS;
+}
+// Everything about one FDP. In live mode `asOf` keeps an open FDP running
+// through a rest, because the question the tile answers is "if I'm tasked now,
+// how much FDP is left" — so elapsed runs to now, and a rest in progress of 2+
+// hours is credited as it would be at the moment of tasking.
+function computeFDPState(group, all, opts){
+  opts = opts || {};
+  const asOf = opts.asOf || null;
+  const open = !!opts.open;
+  const ignoreExtension = !!opts.ignoreExtension;
+  const tasks = group.tasks;
+  const first = tasks[0].e;
+  const start = tasks[0].start;
+  const pilotType = first.pilotType || 'single';
+  const increased = tasks.some(t => t.e.increasedFDP);
+  const [base, increasedLimit] = fdpTableValues(start, pilotType, first.sectors);
+  let max = increased ? increasedLimit : base;
+
+  // Rest inside the FDP: the gaps between tasks, less any NFD.
+  const dutyIvs = mergeIntervals(all
+    .filter(e => e.type==='NFD' || e.type==='FDP')
+    .map(e => { const d = entryDates(e); return { start:d.start.getTime(), end:d.end.getTime() }; }));
+  let runEnd = tasks[0].end.getTime();
+  const rests = [];
+  for(let i=1;i<tasks.length;i++){
+    const s = tasks[i].start.getTime();
+    if(s > runEnd) rests.push(...restSegments(runEnd, s, dutyIvs));
+    runEnd = Math.max(runEnd, tasks[i].end.getTime());
+  }
+  const lastTaskEnd = runEnd;
+  if(open && asOf && asOf.getTime() > runEnd) rests.push(...restSegments(runEnd, asOf.getTime(), dutyIvs));
+  // 10.8.1 requires 2 consecutive hours, measured from the end of the task —
+  // which already includes the 30 min after landing, per the FDP definition
+  // and 10.8.1's "not less than 30 minutes after landing".
+  const qualifying = rests.filter(r => (r.end - r.start)/3600000 >= 2);
+  let nightHrs = 0, dayHrs = 0;
+  for(const r of qualifying){
+    const parts = splitDayNightHours(new Date(r.start), new Date(r.end));
+    nightHrs += parts.nightHours; dayHrs += parts.dayHours;
+  }
+  // Unchanged local convention: the 2100-0600 part of a rest is treated as
+  // sleeping accommodation and credited in full (10.8.1); the rest of the day
+  // as resting accommodation, at half and capped at 2h in total (10.8.2).
+  const splitRestRaw = nightHrs + Math.min(dayHrs/2, 2);
+  const splitRest = increased ? 0 : splitRestRaw; // 10.6.1: no split credit on an increased FDP
+  max += splitRest;
+
+  let ext = 0;
+  if(!ignoreExtension){
+    for(const t of tasks){
+      const e = t.e;
+      if(e.extType === 'unforeseen' && Number(e.extHours) > 0) ext = Math.max(ext, Math.min(Number(e.extHours), 1));
+      if(e.extType === 'medical' && Number(e.extHours) > 0) ext = Math.max(ext, Math.min(Number(e.extHours), 4));
+    }
+  }
+  max += ext;
+  let capped16 = false;
+  if(max > 16){ max = 16; capped16 = true; } // 10.8.1 / 10.11
+
+  let remainingPortionCapped = false;
+  if(splitRest > 0 && qualifying.length){
+    const lastRest = qualifying[qualifying.length-1];
+    const resumption = new Date(lastRest.end);
+    const [freshBase] = fdpTableValues(resumption, pilotType, first.sectors);
+    const allowed = (lastRest.end - start.getTime())/3600000 + freshBase;
+    if(allowed < max){ max = allowed; remainingPortionCapped = true; }
+  }
+
+  // 10.3 — only NFD in the 8 hours before the FDP starts.
+  const winStart = start.getTime() - 8*3600000;
+  let nfdHrs = 0;
+  for(const e of all){
+    if(e.type !== 'NFD') continue;
+    const d = entryDates(e);
+    const s = Math.max(d.start.getTime(), winStart), en = Math.min(d.end.getTime(), start.getTime());
+    if(en > s) nfdHrs += (en - s)/3600000;
+  }
+  const reduction = nfdHrs > 0 ? Math.max(0.5, nfdHrs) : 0;
+  max -= reduction;
+
+  // 10.6 — a Day Shift must not run past 2200 without approval. It's a cap on
+  // the clock time the FDP may end, so it's applied last.
+  let dayShift22Capped = false;
+  const approved = !ignoreExtension && tasks.some(t => t.e.extType === 'dayshift22');
+  if(!approved){
+    const standby = findEnclosingStandbyEntry(first, all);
+    if(isDayShiftStandby(standby)){
+      const dateStr = start.getFullYear()+'-'+String(start.getMonth()+1).padStart(2,'0')+'-'+String(start.getDate()).padStart(2,'0');
+      const cap = combineDateTime(dateStr, '22:00');
+      if(cap.getTime() > start.getTime()){
+        const capHours = (cap.getTime() - start.getTime())/3600000;
+        if(capHours < max){ max = capHours; dayShift22Capped = true; }
+      }
+    }
+  }
+  max = Math.max(0, max);
+
+  // Two different measures, both needed:
+  //  value        — the FDP as actually flown so far, which is what the bar and
+  //                 the over/under state should reflect. Resting between tasks
+  //                 must not turn the bar red for a task that landed on limit.
+  //  elapsedToNow — the clock as it stands right now, which is what decides how
+  //                 much FDP is left if a tasking comes in: the rest counts
+  //                 towards the FDP unless it earns a credit (10.8.1).
+  const valueEndMs = (open && asOf) ? Math.min(asOf.getTime(), lastTaskEnd) : lastTaskEnd;
+  const elapsedToNow = (open && asOf)
+    ? Math.max(asOf.getTime() - start.getTime(), valueEndMs - start.getTime())/3600000
+    : (lastTaskEnd - start.getTime())/3600000;
+  return {
+    start, lastTaskEnd:new Date(lastTaskEnd), elapsedToNow,
+    value: (valueEndMs - start.getTime())/3600000,
+    max, maxEnd: new Date(start.getTime() + max*3600000),
+    base, increased, splitRest, splitRestSuppressed: increased && splitRestRaw > 0,
+    ext, reduction, capped16, remainingPortionCapped, dayShift22Capped,
+    open, taskInProgress: tasks.some(t => isOpenEntry(t.e)),
+    taskCount: tasks.filter(t => !t.virtual).length,
+    hypothetical: tasks.every(t => t.virtual)
+  };
+}
+// The FDP a tasking right now would fall into: the one still open if no
+// off-duty period has been taken since its last task, otherwise a fresh one.
+function liveFDPState(all, nowReal, opts){
+  const groups = groupFDPTasks(all, nowReal);
+  const last = groups.length ? groups[groups.length-1] : null;
+  const settings = Object.assign({ asOf:nowReal, open:true }, opts||{});
+  if(last && fdpOpenAt(last, all, nowReal)) return computeFDPState(last, all, settings);
+  const vt = virtualTaskAt(nowReal);
+  return computeFDPState({ tasks:[vt], start:vt.start, end:vt.end }, all, settings);
+}
+
 function mergeIntervals(ivs){
   if(!ivs.length) return [];
   const sorted = [...ivs].sort((a,b)=> a.start - b.start);
@@ -1466,21 +1707,27 @@ function findAllOpenFDPs(all){
 function openTaskBannerHTML(openEntry, all){
   const {start} = entryDates(openEntry);
   const nowReal = new Date();
-  const calc = computeMaxFDP(openEntry, all);
-  const anchor = calc.chainStart;
-  const fdpMaxEnd = new Date(anchor.getTime() + calc.max*3600000);
+  // Same FDP model as the tile and the orange marker line, so all three agree:
+  // the limit belongs to the whole FDP (every task since the last off-duty
+  // period), not to this task on its own.
+  const groups = groupFDPTasks(all, nowReal);
+  const group = fdpGroupForTask(groups, openEntry);
+  const st = group
+    ? computeFDPState(group, all, { asOf:nowReal, open:true })
+    : liveFDPState(all, nowReal);
+  const anchor = st.start;
+  const fdpMaxEnd = st.maxEnd;
   // The FDP itself doesn't end at touchdown — it continues 30 min after the
   // last landing (per the FDP definition). "Must land by" is a practical
   // prompt for when the aircraft needs to be on the ground, so it's the true
   // FDP max end time minus that 30-minute post-landing allowance.
   const mustLandBy = new Date(fdpMaxEnd.getTime() - 30*60000);
-  const elapsed = (nowReal.getTime() - anchor.getTime())/3600000;
   const remaining = (mustLandBy.getTime() - nowReal.getTime())/3600000;
-  const deadlineStr = mustLandBy.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', hour12:false});
-  const fdpMaxEndStr = fdpMaxEnd.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', hour12:false});
+  const deadlineStr = fmtMarkerTime(mustLandBy, nowReal);
+  const fdpMaxEndStr = fmtMarkerTime(fdpMaxEnd, nowReal);
   const startStr = start.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', hour12:false});
   const isContinuation = anchor.getTime() !== start.getTime();
-  // How long THIS entry has literally been sitting open, regardless of chain/max —
+  // How long THIS entry has literally been sitting open, regardless of FDP/max —
   // a data-hygiene check to catch a forgotten close-out, independent of whether
   // the calculated max/deadline logic would otherwise call it "OK".
   const entryElapsed = (nowReal.getTime() - start.getTime()) / 3600000;
@@ -1492,13 +1739,16 @@ function openTaskBannerHTML(openEntry, all){
   else { color = 'var(--green)'; statusText = `${fmtHrs(remaining)}h remaining`; }
   if(stale) color = 'var(--red)';
   const adj = [];
-  if(calc.splitRest > 0) adj.push(`+${fmtHrs(calc.splitRest)}h split rest`);
-  if(calc.reduction > 0) adj.push(`-${fmtHrs(calc.reduction)}h prior NFD`);
-  if(calc.dayShift22Capped) adj.push('capped 2200 — 10.6 Duty Officer approval required to extend');
-  if(calc.remainingPortionCapped) adj.push('capped by 10.8.1 — remaining portion limited to a fresh Table 6 lookup at resumption');
+  if(st.increased) adj.push('increased FDP (10.6.1)');
+  if(st.splitRest > 0) adj.push(`+${fmtHrs(st.splitRest)}h split rest`);
+  if(st.splitRestSuppressed) adj.push('no split credit — FDP increased');
+  if(st.reduction > 0) adj.push(`-${fmtHrs(st.reduction)}h prior NFD`);
+  if(st.capped16) adj.push('capped at 16h');
+  if(st.dayShift22Capped) adj.push('capped 2200 — 10.6 Duty Officer approval required to extend');
+  if(st.remainingPortionCapped) adj.push('capped by 10.8.1 — remaining portion limited to a fresh Table 6 lookup at resumption');
   if(isContinuation){
-    const anchorStr = anchor.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', hour12:false});
-    adj.push(`continuation of duty starting ${anchorStr} — no genuine rest break beforehand`);
+    const anchorStr = fmtMarkerTime(anchor, nowReal);
+    adj.push(`FDP began ${anchorStr}${st.taskCount > 1 ? ` (${st.taskCount} tasks)` : ''} — no off-duty period since`);
   }
   adj.push(`FDP max end ${fdpMaxEndStr} (incl. 30 min post-landing)`);
   const staleWarning = stale
@@ -1508,10 +1758,10 @@ function openTaskBannerHTML(openEntry, all){
     <div style="border:1px solid var(--border-light); border-left:4px solid ${color}; border-radius:10px; padding:16px 18px; margin-bottom:16px; background:var(--panel2);">
       <div style="display:flex; justify-content:space-between; align-items:baseline; flex-wrap:wrap; gap:8px;">
         <div style="font-size:12px; text-transform:uppercase; letter-spacing:0.05em; color:${color}; font-weight:700;">Open FDP In Progress</div>
-        <div style="font-family:var(--font-mono); font-size:12px; color:var(--muted);">Started ${startStr}</div>
+        <div style="font-family:var(--font-mono); font-size:12px; color:var(--muted);">Task started ${startStr}</div>
       </div>
       <div style="font-family:var(--font-mono); font-size:26px; font-weight:700; margin-top:6px; color:${color};">Must land by ${deadlineStr}</div>
-      <div style="font-size:12px; color:var(--muted); margin-top:4px;">${statusText} · Max FDP ${fmtHrs(calc.max)}h${adj.length ? ` (${adj.join(', ')})` : ''}</div>
+      <div style="font-size:12px; color:var(--muted); margin-top:4px;">${statusText} · Max FDP ${fmtHrs(st.max)}h${adj.length ? ` (${adj.join(', ')})` : ''}</div>
       ${staleWarning}
     </div>`;
 }
@@ -1526,195 +1776,6 @@ function multipleOpenWarningHTML(openList){
 }
 
 /* ---------------- LIVE / CURRENT / PAST FDP tile ---------------- */
-// Full computeMaxFDP() result (max, reduction, etc.) for a hypothetical
-// zero-length FDP starting right now — used whenever the tile has no actual
-// FDP entry to anchor to yet, so the max shown already reflects anything
-// (like a preceding NFD) that would apply to an FDP commencing this instant.
-function hypotheticalFDPIfStartedNow(all){
-  const now = new Date();
-  const dateStr = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0') + '-' + String(now.getDate()).padStart(2,'0');
-  const hh = String(now.getHours()).padStart(2,'0');
-  const mm = String(now.getMinutes()).padStart(2,'0');
-  const hypo = { id:'__hypo_fdp_tile__', type:'FDP', date:dateStr, startTime:`${hh}:${mm}`, endTime:`${hh}:${mm}`, pilotType:'single', increasedFDP:false, extType:'none', extHours:0 };
-  return computeMaxFDP(hypo, all);
-}
-function hypotheticalMaxIfStartedNow(all){
-  return hypotheticalFDPIfStartedNow(all).max;
-}
-// NFD reduction owed to a hypothetical "if an FDP started right now" moment,
-// counting only NFD time that hasn't already been attributed to a real FDP's
-// own backward-looking window — i.e. NFD occurring strictly after the most
-// recently completed real FDP. Without this cutoff, re-scanning the full 8h
-// window from "now" would double-count an earlier NFD that an earlier real
-// FDP already had its own max reduced for.
-// refTime defaults to the real current moment (live mode's "right now"), but
-// callers viewing a past day pass the actual end of that day's last logged
-// activity instead — see statsForFdpPool for why.
-function trailingLiveNFDReduction(all, sinceExclusive, refTime){
-  const now = refTime || new Date();
-  const windowStart = new Date(now.getTime() - 8*3600000);
-  const cutoff = sinceExclusive ? sinceExclusive.getTime() : -Infinity;
-  let sum = 0;
-  for(const e of all){
-    if(e.type !== 'NFD') continue;
-    const {start:es, end:ee} = entryDates(e);
-    if(ee.getTime() <= cutoff) continue; // already accounted for by a prior real FDP
-    const ovStart = Math.max(es.getTime(), windowStart.getTime(), cutoff);
-    const ovEnd = Math.min(ee.getTime(), now.getTime());
-    if(ovEnd > ovStart) sum += (ovEnd-ovStart)/3600000;
-  }
-  if(sum <= 0) return 0;
-  return Math.max(0.5, sum);
-}
-// The latest end, among FDP/NFD/STANDBY entries starting at or after
-// `sinceExclusive` but within 24h of it, used as a stable stand-in for "now"
-// when computing a trailing NFD's reduction for a PAST day — see
-// statsForFdpPool. Bounded to 24h so this can never reach forward into an
-// unrelated future duty day/standby logged weeks later; it only needs to see
-// whatever happened immediately after the FDP within the same duty day.
-function latestActivityEnd(all, sinceExclusive){
-  const limit = sinceExclusive.getTime() + 24*3600000;
-  let latest = sinceExclusive;
-  for(const e of all){
-    if(e.type!=='FDP' && e.type!=='NFD' && e.type!=='STANDBY') continue;
-    const {start, end} = entryDates(e);
-    if(start.getTime() >= sinceExclusive.getTime() && start.getTime() <= limit && end.getTime() > latest.getTime()) latest = end;
-  }
-  return latest;
-}
-// Combined stats for all FDPs within a standby period: value = merged FDP time
-// (overlaps counted once), max = Table 6 base (by standby start) minus each
-// FDP's 10.3 NFD reduction plus each FDP's split-duty rest credit. Same idea
-// as the Duty tile (FDP+NFD=max) rearranged as FDP=max-NFD.
-//
-// In LIVE mode, when no FDP has been logged yet (fdps.length===0) — e.g. an
-// NFD has been entered but no FDP has started — fall back to the same "as if
-// an FDP started right now" hypothetical the no-standby case already used.
-// The per-FDP loop below only sums nfdReductionHours() across EXISTING fdps,
-// so with zero fdps it silently applied zero reduction even when a preceding
-// NFD had already been logged within the standby, showing the un-reduced
-// Table 6 base as if the NFD hadn't happened. This "as if starting now"
-// fallback only makes sense in live mode — for past days (viewed via the
-// same function, e.g. a finished standby that only ever had an NFD in it),
-// there's no real "now" moment within that day to anchor a hypothetical FDP
-// to, so past days keep the plain base-max, unreduced.
-//
-// Same idea applies when FDPs already exist: in live mode, an NFD logged
-// AFTER the most recent real FDP ended (but before now) has no later FDP to
-// attach its reduction to yet, so it was silently ignored too. trailingLiveNFDReduction
-// picks up only that not-yet-attributed trailing NFD time and folds it in on
-// top of the real per-FDP reductions already summed by combinedFDPStats.
-//
-// Applies combinedFDPStats() to a set of already-known FDPs, then folds in
-// any not-yet-attributed trailing NFD via trailingLiveNFDReduction. Shared by
-// both the standby-anchored path and the no-standby/standalone-FDP path
-// below, so the same trailing-NFD handling applies to a real FDP whichever
-// way it was found.
-//
-// This used to only run in live mode, on the assumption a past day's trailing
-// NFD (one with no later FDP that day to attach its reduction to) simply
-// wasn't relevant once the day was over. But viewed the NEXT day, "no later
-// FDP that day" is no longer a live, still-evolving situation — it's a
-// finished fact, and the reduction that was correctly showing while it was
-// still live shouldn't just disappear because nobody happened to check
-// before the day ended. So this now always applies — the only thing that
-// changes by mode is the reference point: live mode uses the real current
-// moment (so the reduction correctly decays as the 8h window ages past the
-// NFD); a past day uses the actual end of whatever happened last that day,
-// which doesn't decay just because more real-world time has passed since —
-// otherwise checking a past day's tile the next morning vs. that same
-// evening could show two different answers for something that's now a fixed
-// historical fact.
-function statsForFdpPool(fdps, all, baseTimeEntry, mode){
-  const base = combinedFDPStats(fdps, all, baseTimeEntry);
-  if(fdps.length > 0){
-    const lastRealEnd = fdps.reduce((acc,e)=>{
-      const {end} = entryDates(e);
-      return end.getTime() > acc.getTime() ? end : acc;
-    }, entryDates(fdps[0]).end);
-    const refTime = (mode === 'live') ? new Date() : latestActivityEnd(all, lastRealEnd);
-    const trailing = trailingLiveNFDReduction(all, lastRealEnd, refTime);
-    if(trailing > 0){
-      return { value: base.value, max: base.max - trailing, totalReduction: base.totalReduction + trailing, totalSplitRest: base.totalSplitRest };
-    }
-  }
-  return base;
-}
-function periodFDPStats(standby, all){
-  const { mode } = getStatusReference();
-  if(!standby){
-    // No STANDBY entry at all for this day (e.g. a training/sim day logged
-    // as bare FDP/NFD entries) doesn't mean nothing happened — there can
-    // still be real FDPs already logged today. This used to skip straight to
-    // a pure "as if an FDP started right now" hypothetical regardless,
-    // ignoring any FDP that had already happened: a completed training FDP's
-    // duty time didn't count toward value, and a later NFD's reduction was
-    // computed against an empty day instead of against the real FDP that
-    // preceded it. Mirror the standby-anchored path: if standalone FDPs
-    // exist for the day, pool them (anchored to the first one's own start,
-    // in place of a standby start) the same way; only fall back to the pure
-    // hypothetical when the day genuinely has no FDP in it yet.
-    const dayDate = (mode === 'live') ? new Date() : new Date(timelineCenterDate);
-    const standaloneFdps = standaloneFDPsForDay(dayDate, all);
-    if(standaloneFdps.length > 0){
-      const sorted = standaloneFdps.slice().sort((a,b)=> entryDates(a).start - entryDates(b).start);
-      const anchorStart = entryDates(sorted[0]).start;
-      return statsForFdpPool(sorted, all, anchorStart, mode);
-    }
-    const hypo = hypotheticalFDPIfStartedNow(all);
-    return { value: 0, max: hypo.max, totalReduction: hypo.reduction, totalSplitRest: 0 };
-  }
-  const {start: sbStart, end: sbEnd} = effectiveStandbyWindow(standby, all);
-  const fdps = all.filter(e=>{
-    if(e.type!=='FDP') return false;
-    const {start} = entryDates(e);
-    return start.getTime() >= sbStart.getTime() && start.getTime() <= sbEnd.getTime();
-  });
-  if(fdps.length === 0 && mode === 'live'){
-    const hypo = hypotheticalFDPIfStartedNow(all);
-    return { value: 0, max: hypo.max, totalReduction: hypo.reduction, totalSplitRest: 0 };
-  }
-  return statsForFdpPool(fdps, all, sbStart, mode);
-}
-function combinedFDPStats(fdps, all, baseTimeEntry){
-  const ivs = fdps.map(e=>{ const {start,end} = entryDates(e); return {start:start.getTime(), end:end.getTime()}; });
-  const merged = mergeIntervals(ivs);
-  const value = merged.reduce((acc,iv)=> acc + (iv.end-iv.start)/3600000, 0);
-  let max, totalReduction = 0, totalSplitRest = 0;
-  if(baseTimeEntry){
-    const [baseMax] = fdpTableValues(baseTimeEntry, 'single');
-    max = baseMax;
-    // Process chronologically and exclude NFD time already attributed to an
-    // earlier FDP's own reduction (via nfdReductionHours' sinceExclusive) —
-    // otherwise two FDPs close enough together for their independent 8h
-    // lookback windows to both reach the same NFD period each claim a
-    // reduction for it, and the combined total ends up exceeding the actual
-    // NFD hours logged.
-    const sortedFdps = [...fdps].sort((a,b)=> entryDates(a).start - entryDates(b).start);
-    let consumedUntil = null;
-    for(const fdp of sortedFdps){
-      const r = nfdReductionHours(fdp, all, consumedUntil);
-      const s = autoSplitRestCredit(fdp, all);
-      totalReduction += r;
-      totalSplitRest += s;
-      max += s - r;
-      consumedUntil = entryDates(fdp).end;
-    }
-    // Same absolute ceiling computeMaxFDP() applies to a single FDP (Table 6
-    // footnote / 10.8.1 — no combination of split-duty rest or extensions
-    // ever pushes a single FDP's max past 16h). Without this, a large
-    // split-duty credit (itself uncapped — see autoSplitRestInfo) could push
-    // the pooled total for a whole standby well past what any individual FDP
-    // in it is actually allowed, e.g. a genuine ~12h overnight gap between
-    // two otherwise-separate flights being credited as if it were a
-    // qualifying split-duty rest, inflating the pool to 20+ hours.
-    max = Math.min(max, 16);
-  } else {
-    // No shared standby to anchor a single Table 6 lookup — sum each FDP's own corrected max.
-    max = fdps.reduce((acc,e)=> acc + computeMaxFDP(e, all).max, 0);
-  }
-  return { value, max, totalReduction, totalSplitRest };
-}
 // Today: is there a standby currently in progress, or one that's already ended?
 function findTodayStandbyContext(all){
   const now = new Date();
@@ -1821,52 +1882,51 @@ function standaloneFDPsForDay(dayDate, all){
 }
 function computeFDPTileState(all){
   const { mode } = getStatusReference();
-  // For a future day, "starting" is what matters (a standby or FDP that
-  // begins that day) — the mirror image of past mode's "ending" anchor
-  // (pastDayStandby), since we're looking forward at what's planned rather
-  // than backward at what was completed. This used to unconditionally return
-  // empty regardless of what was actually scheduled, so entering a planned
-  // FDP for a future date and scrolling the timeline to it never showed
-  // anything — the tile simply never looked at future-dated entries at all.
-  if(mode === 'future'){
-    const dayDate = new Date(timelineCenterDate);
-    const standby = standbyStartingOnDay(dayDate, all);
-    if(standby) return { label:'PLANNED FDP', empty:false, flagMultiple:false, ...periodFDPStats(standby, all) };
+  const nowReal = new Date();
 
-    const standalone = standaloneFDPsForDay(dayDate, all);
-    if(standalone.length){
-      const sorted = standalone.slice().sort((a,b)=> entryDates(a).start - entryDates(b).start);
-      const anchorStart = entryDates(sorted[0]).start;
-      return { label:'PLANNED FDP', empty:false, flagMultiple:false, ...statsForFdpPool(sorted, all, anchorStart, mode) };
-    }
-    return { label:'PLANNED FDP', empty:true, flagMultiple:false };
-  }
-
+  // Which day/shift the tile is reporting on is unchanged (live: the standby
+  // in progress, else one that finished today, else today's own tasks; past:
+  // the standby ending that day; future: the standby starting that day). What
+  // changed is what gets calculated for it — the FDP those tasks belong to,
+  // per the model above, rather than a pool of task durations.
   if(mode === 'live'){
     const { standby, state } = findTodayStandbyContext(all);
     const label = state === 'live' ? 'LIVE FDP' : 'CURRENT FDP';
-    return { label, empty:false, flagMultiple:false, ...periodFDPStats(standby, all) };
+    const ctxTasks = (standby ? fdpsWithinStandby(standby, all) : standaloneFDPsForDay(nowReal, all))
+      .filter(e => entryDates(e).start.getTime() <= nowReal.getTime());
+    if(!ctxTasks.length){
+      // No task in this shift yet — show what a tasking right now would get,
+      // which continues an FDP that hasn't had an off-duty period yet.
+      return { label, empty:false, flagMultiple:false, st: liveFDPState(all, nowReal) };
+    }
+    const groups = groupFDPTasks(all, nowReal);
+    const latest = ctxTasks.slice().sort((a,b)=> entryDates(b).start - entryDates(a).start)[0];
+    const group = fdpGroupForTask(groups, latest);
+    if(!group) return { label, empty:false, flagMultiple:false, st: liveFDPState(all, nowReal) };
+    const flagMultiple = new Set(ctxTasks.map(e => {
+      const g = fdpGroupForTask(groups, e); return g ? g.start.getTime() : 0;
+    })).size > 1;
+    return { label, empty:false, flagMultiple, st: computeFDPState(group, all, { asOf:nowReal, open: fdpOpenAt(group, all, nowReal) }) };
   }
 
-  // past
   const dayDate = new Date(timelineCenterDate);
-  const { standby, flagMultiple } = pastDayStandby(dayDate, all);
-  if(standby) return { label:'PAST FDP', empty:false, flagMultiple, ...periodFDPStats(standby, all) };
-
-  const standalone = standaloneFDPsForDay(dayDate, all);
-  if(standalone.length){
-    // Route through the same pooling + trailing-NFD logic periodFDPStats uses
-    // for a live no-standby day (anchor to the earliest FDP's own start),
-    // rather than a bare combinedFDPStats(...,null) call — that older path
-    // used each FDP's own independent computeMaxFDP() (correct for a single
-    // FDP viewed alone, but blind to any NFD trailing after the last one,
-    // and blind to totalReduction/totalSplitRest entirely for display).
-    const sorted = standalone.slice().sort((a,b)=> entryDates(a).start - entryDates(b).start);
-    const anchorStart = entryDates(sorted[0]).start;
-    return { label:'PAST FDP', empty:false, flagMultiple:false, ...statsForFdpPool(sorted, all, anchorStart, mode) };
+  const label = mode === 'future' ? 'PLANNED FDP' : 'PAST FDP';
+  const standby = mode === 'future' ? standbyStartingOnDay(dayDate, all) : pastDayStandby(dayDate, all).standby;
+  const multiStandby = mode === 'future' ? false : pastDayStandby(dayDate, all).flagMultiple;
+  const ctxTasks = standby ? fdpsWithinStandby(standby, all) : standaloneFDPsForDay(dayDate, all);
+  if(!ctxTasks.length){
+    if(!standby) return { label, empty:true, flagMultiple:false };
+    const [base] = fdpTableValues(entryDates(standby).start, 'single');
+    return { label, empty:false, flagMultiple:multiStandby, st:null, noTasks:true, base };
   }
-
-  return { label:'PAST FDP', empty:true, flagMultiple:false };
+  const groups = groupFDPTasks(all);
+  const latest = ctxTasks.slice().sort((a,b)=> entryDates(b).start - entryDates(a).start)[0];
+  const group = fdpGroupForTask(groups, latest);
+  if(!group) return { label, empty:true, flagMultiple:false };
+  const flagMultiple = multiStandby || new Set(ctxTasks.map(e => {
+    const g = fdpGroupForTask(groups, e); return g ? g.start.getTime() : 0;
+  })).size > 1;
+  return { label, empty:false, flagMultiple, st: computeFDPState(group, all, { asOf:null, open:false }) };
 }
 
 // FDPs whose start falls within a standby's effective window (same containment rule periodFDPStats uses).
@@ -1954,15 +2014,35 @@ function renderDashboard(){
 
   // LIVE / CURRENT / PAST FDP — combined FDP time within the relevant standby period
   const fdpTile = computeFDPTileState(entries);
+  const fdpLabel = `${fdpTile.label} (10.6)`;
   if(fdpTile.empty){
-    html += gaugeHTML(fdpTile.label, 0, 1, 'hrs max', 'No FDP logged yet', false);
+    html += gaugeHTML(fdpLabel, 0, 1, 'hrs max', 'No FDP logged for this day', false);
+  } else if(fdpTile.noTasks){
+    html += gaugeHTML(fdpLabel, 0, fdpTile.base, 'hrs max',
+      `No task logged in this standby — ${fmtHrs(fdpTile.base)}h available from its start (Table 6)`, false);
   } else {
+    const st = fdpTile.st;
     const subParts = [];
-    if(fdpTile.totalSplitRest > 0) subParts.push(`+${fmtHrs(fdpTile.totalSplitRest)}h split rest`);
-    if(fdpTile.totalReduction > 0) subParts.push(`-${fmtHrs(fdpTile.totalReduction)}h prior NFD`);
-    let sub = subParts.length ? subParts.join(' · ') : 'No adjustments applied';
-    if(fdpTile.flagMultiple) sub += ' · ⚠ Multiple standby periods end this day — verify manually';
-    html += gaugeHTML(fdpTile.label, fdpTile.value, fdpTile.max, 'hrs max', sub, fdpTile.value > fdpTile.max);
+    if(st.increased) subParts.push(`increased FDP (10.6.1)`);
+    if(st.splitRest > 0) subParts.push(`+${fmtHrs(st.splitRest)}h split rest`);
+    if(st.splitRestSuppressed) subParts.push('no split credit — FDP increased');
+    if(st.ext > 0) subParts.push(`+${fmtHrs(st.ext)}h extension`);
+    if(st.reduction > 0) subParts.push(`-${fmtHrs(st.reduction)}h prior NFD`);
+    if(st.capped16) subParts.push('capped at 16h');
+    if(st.remainingPortionCapped) subParts.push('capped by 10.8.1');
+    if(st.dayShift22Capped) subParts.push('capped 2200 — Day Shift');
+    // What the person actually needs off this tile: how much FDP is left and
+    // the clock time it runs out.
+    let remText;
+    if(st.value > st.max) remText = `${fmtHrs(st.value - st.max)}h over`;
+    else if(st.open && !st.taskInProgress) remText = `${fmtHrs(Math.max(0, st.max - st.elapsedToNow))}h remaining if tasked now`;
+    else if(st.open) remText = `${fmtHrs(st.max - st.value)}h remaining`;
+    else remText = `${fmtHrs(st.max - st.value)}h unused`;
+    subParts.push(`${remText} · max FDP end ${fmtMarkerTime(st.maxEnd, st.start)}`);
+    if(st.taskCount > 1) subParts.push(`${st.taskCount} tasks in this FDP`);
+    let sub = subParts.join(' · ');
+    if(fdpTile.flagMultiple) sub += ' · ⚠ More than one FDP or standby for this day — verify manually';
+    html += gaugeHTML(fdpLabel, st.value, st.max, 'hrs max', sub, st.value > st.max);
   }
 
   // Used by the Off-Duty Period tile below only — intentionally NOT scoped
@@ -2061,24 +2141,24 @@ function renderDashboard(){
     if(st.actual === null){
       // Shouldn't normally occur (prevDuty was found precisely because it
       // ends at/before lastDutyish's start), but guard anyway.
-      html += minGaugeHTML('Off-Duty Period', 0, st.required, 'hrs',
+      html += minGaugeHTML('Off-Duty Period (10.12.3)', 0, st.required, 'hrs',
         `${fmtHrs(st.required)}h required after ${prevDuty.type} ending ${fmtLogDate(prevDuty.date)}`,
         'pending');
     } else if(st.actual < st.required){
-      html += minGaugeHTML('Off-Duty Period', st.actual, st.required, 'hrs',
+      html += minGaugeHTML('Off-Duty Period (10.12.3)', st.actual, st.required, 'hrs',
         `Shortfall after ${prevDuty.type} ending ${fmtLogDate(prevDuty.date)} — ${lastDutyish.type} on ${fmtLogDate(lastDutyish.date)} started ${fmtHrs(st.required - st.actual)}h too early`,
         'shortfall');
     } else {
-      html += minGaugeHTML('Off-Duty Period', st.actual, st.required, 'hrs',
+      html += minGaugeHTML('Off-Duty Period (10.12.3)', st.actual, st.required, 'hrs',
         `${fmtHrs(st.actual)}h taken after ${prevDuty.type} ending ${fmtLogDate(prevDuty.date)}, before ${lastDutyish.type} on ${fmtLogDate(lastDutyish.date)} — requirement met`,
         'met');
     }
   } else if(lastDutyish){
-    html += minGaugeHTML('Off-Duty Period', 0, 10, 'hrs',
+    html += minGaugeHTML('Off-Duty Period (10.12.3)', 0, 10, 'hrs',
       `No earlier FDP or standby logged before the ${lastDutyish.type} on ${fmtLogDate(lastDutyish.date)}`,
       'pending');
   } else {
-    html += minGaugeHTML('Off-Duty Period', 0, 10, 'hrs', 'No FDP or standby logged yet', 'pending');
+    html += minGaugeHTML('Off-Duty Period (10.12.3)', 0, 10, 'hrs', 'No FDP or standby logged yet', 'pending');
   }
 
   // 10.12.2 Preceding Rest — before commencing an FDP or standby, at least one
@@ -2149,28 +2229,28 @@ function renderDashboard(){
   const qualifies60 = hasQualifyingGap(entries, 168, now);
   const cap7 = (lno7 >= 3) ? 40 : (qualifies60 ? 60 : 40);
   const duty7 = sumDutyWindow(entries, 168, now);
-  html += gaugeHTML('Cumulative Duty (7d)', duty7, cap7, 'hrs',
+  html += gaugeHTML('Cumulative Duty (7d, 10.14)', duty7, cap7, 'hrs',
     `Cap = ${cap7}h (${lno7>=3 ? '3+ LNO Operations in period' : (qualifies60 ? '36h+ gap with 2 local nights found' : 'default, no qualifying rest gap detected')})`,
     duty7 > cap7);
 
   // 14-day cumulative duty vs 100
   const duty14 = sumDutyWindow(entries, 336, now);
-  html += gaugeHTML('Cumulative Duty (14d)', duty14, 100, 'hrs', 'Fixed 100-hour limit per 336 consecutive hours', duty14>100);
+  html += gaugeHTML('Cumulative Duty (14d, 10.14)', duty14, 100, 'hrs', 'Fixed 100-hour limit per 336 consecutive hours', duty14>100);
 
   // 28-day flight time vs 100
   const flight28 = sumFlightTimeWindow(entries, 672, now);
-  html += gaugeHTML('Flight Time (28d)', flight28, 100, 'hrs', 'Limit per any 28 consecutive days', flight28>100);
+  html += gaugeHTML('Flight Time (28d, 10.14)', flight28, 100, 'hrs', 'Limit per any 28 consecutive days', flight28>100);
 
   // 365-day flight time vs 1000
   const flight365 = sumFlightTimeWindow(entries, 8760, now);
-  html += gaugeHTML('Flight Time (365d)', flight365, 1000, 'hrs', 'Limit per any 365 consecutive days', flight365>1000);
+  html += gaugeHTML('Flight Time (365d, 10.14)', flight365, 1000, 'hrs', 'Limit per any 365 consecutive days', flight365>1000);
 
   // LNO count 7d vs 4
-  html += gaugeHTML('Late Night Operations (7d)', lno7, 4, 'FDPs', 'Max 4 late-night FDPs (>30 min between 2300–0530) per 168 hrs', lno7>4);
+  html += gaugeHTML('Late Night Operations (7d, 10.13)', lno7, 4, 'FDPs', 'Max 4 late-night FDPs (>30 min between 2300–0530) per 168 hrs', lno7>4);
 
   // Increased FDP count 7d vs 2
   const incr7 = countIncreasedWindow(entries, 168, now);
-  html += gaugeHTML('Increased FDPs (7d)', incr7, 2, 'used', 'Max 2 increased-limit FDPs per 7-day period', incr7>2);
+  html += gaugeHTML('Increased FDPs (7d, 10.6.1)', incr7, 2, 'used', 'Max 2 increased-limit FDPs per 7-day period', incr7>2);
 
   // Last Standby vs 24h — scoped to the day being viewed (live: current/most
   // recent today; past: the standby ending that day; future: the standby
@@ -2185,9 +2265,9 @@ function renderDashboard(){
     : dutyCtx.standby;
   if(displayStandby){
     const dur = durationHours(displayStandby);
-    html += gaugeHTML('Last Standby', dur, 24, 'hrs max', 'Standby period must not exceed 24 continuous hours', dur>24);
+    html += gaugeHTML('Last Standby (10.2)', dur, 24, 'hrs max', 'Standby period must not exceed 24 continuous hours', dur>24);
   } else {
-    html += gaugeHTML('Last Standby', 0, 24, 'hrs max', 'No standby logged for this day', false);
+    html += gaugeHTML('Last Standby (10.2)', 0, 24, 'hrs max', 'No standby logged for this day', false);
   }
 
   grid.innerHTML = html;
@@ -2466,50 +2546,26 @@ function bandLabel(b){
 // (or the ongoing FDP), then placed on whichever displayed day they fall on.
 function computeNowMarkers(all){
   const nowReal = new Date();
-
-  let refEntry = null;
-  for(const e of all){
-    if(e.type!=='FDP') continue;
-    if(isOpenEntry(e)){ refEntry = e; break; } // open/in-progress task takes priority
-  }
-  if(!refEntry){
-    for(const e of all){
-      if(e.type!=='FDP') continue;
-      const {start,end} = entryDates(e);
-      if(nowReal.getTime() >= start.getTime() && nowReal.getTime() <= end.getTime()){ refEntry = e; break; }
-    }
-  }
-
-  let baseEntry;
-  if(refEntry){
-    baseEntry = refEntry;
-  } else {
-    const dateStr = nowReal.getFullYear() + '-' + String(nowReal.getMonth()+1).padStart(2,'0') + '-' + String(nowReal.getDate()).padStart(2,'0');
-    const hh = String(nowReal.getHours()).padStart(2,'0');
-    const mm = String(nowReal.getMinutes()).padStart(2,'0');
-    baseEntry = { id:'__hypothetical__', type:'FDP', date: dateStr, startTime: `${hh}:${mm}`, endTime: `${hh}:${mm}`, pilotType:'single', increasedFDP:false, extType:'none', extHours:0 };
-  }
-
-  const {start: baseStart} = entryDates(baseEntry);
-  const baseCalc = computeMaxFDP({...baseEntry, extType:'none', extHours:0}, all);
-  const anchor = baseCalc.chainStart;
-
-  const markers = [{
-    time: new Date(anchor.getTime() + baseCalc.max*3600000),
-    color: 'var(--tl-orange)',
-    label: refEntry ? 'Current FDP — max end time (no extension)' : 'Max FDP end if started now',
-  }];
+  // Same FDP model the tile uses: the orange line is the end of the FDP a
+  // tasking right now would fall into — which continues the current FDP if no
+  // off-duty period has been taken since its last task, rather than assuming
+  // every task starts a fresh FDP.
+  const base = liveFDPState(all, nowReal, { ignoreExtension:true });
+  const label = base.hypothetical
+    ? 'Max FDP end if tasked now'
+    : (base.taskInProgress ? 'Current FDP — max end time (no extension)' : 'Current FDP — max end if tasked now');
+  const markers = [{ time: base.maxEnd, color:'var(--tl-orange)', label }];
 
   // Extension line only shows when there's a genuinely open FDP that has an
   // extension type actually selected on it — not as a generic "what's available".
-  const hasExtensionSelected = refEntry && isOpenEntry(refEntry) && refEntry.extType && refEntry.extType !== 'none';
-  if(hasExtensionSelected){
-    const extCalc = computeMaxFDP(refEntry, all); // as actually configured, including its real extension
-    if(extCalc.max > baseCalc.max){
-      let label = 'Limit with +1h unforeseen extension';
-      if(refEntry.extType === 'medical') label = 'Limit with +4h medical extension';
-      else if(refEntry.extType === 'dayshift22') label = 'Limit with Duty Officer approval past 2200';
-      markers.push({ time: new Date(extCalc.chainStart.getTime() + extCalc.max*3600000), color:'var(--tl-yellow)', label });
+  const openEntry = findOpenFDP(all);
+  if(openEntry && openEntry.extType && openEntry.extType !== 'none'){
+    const withExt = liveFDPState(all, nowReal);
+    if(withExt.max > base.max){
+      let label2 = 'Limit with +1h unforeseen extension';
+      if(openEntry.extType === 'medical') label2 = 'Limit with +4h medical extension';
+      else if(openEntry.extType === 'dayshift22') label2 = 'Limit with Duty Officer approval past 2200';
+      markers.push({ time: withExt.maxEnd, color:'var(--tl-yellow)', label: label2 });
     }
   }
   return markers;
