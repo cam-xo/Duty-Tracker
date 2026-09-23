@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Duty & Fatigue Tracker v0.59 — CAO 48.1 App 4B</title>
+<title>Duty &amp; Fatigue Tracker — CAO 48.1 App 4B</title>
 <style>
   :root{
     --bg:#0b0e13;
@@ -292,7 +292,7 @@
   <div class="topbar-left">
     <div class="stripe"></div>
     <div class="brand">
-      <h1>Duty &amp; Fatigue Tracker <span class="version-tag">v0.59</span></h1>
+      <h1>Duty &amp; Fatigue Tracker <span class="version-tag" id="versionTag"></span></h1>
       <p>OMY - Fatigue Management System v0.9 (CAO 48.1 Appendix 4B) — personal reference tool</p>
     </div>
   </div>
@@ -329,7 +329,9 @@
       <div class="field">
         <label>Date</label>
         <div style="display:flex; gap:8px;">
+          <button type="button" class="btn btn-ghost" id="fDatePrev" style="width:auto; padding:8px 12px;" title="Move back a day">&larr;</button>
           <input type="date" id="f-date" style="flex:1;" />
+          <button type="button" class="btn btn-ghost" id="fDateNext" style="width:auto; padding:8px 12px;" title="Move forward a day">&rarr;</button>
           <button type="button" class="btn btn-ghost" id="todayBtn" style="width:auto; white-space:nowrap;">Today</button>
         </div>
       </div>
@@ -555,6 +557,19 @@ const firebaseConfig = {
   messagingSenderId: "826549331847",
   appId: "1:826549331847:web:f4e5fef6d758d2fa07d522"
 };
+/* ---------------- Version ----------------
+   Semantic versioning, MAJOR.MINOR.PATCH:
+     MAJOR — stays 0 until it's declared ready for 1.0.0.
+     MINOR — new behaviour, a new check, or a change to how something is
+             calculated (anything that can change a number on screen).
+     PATCH — bug fixes and wording that don't change the rules.
+   Set here only; the title and header read from it. */
+const APP_VERSION = '0.60.0';
+// Applied immediately rather than in init(), which only runs after sign-in —
+// otherwise the login screen shows a blank version tag.
+document.getElementById('versionTag').textContent = `v${APP_VERSION}`;
+document.title = `Duty & Fatigue Tracker v${APP_VERSION} — CAO 48.1 App 4B`;
+
 firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.firestore();
@@ -1453,12 +1468,33 @@ function flightTimeLimitFor(entry){
 // plus, for an FDP: time the FDP exceeded 12 hrs, or 1 hr per 30 min (or part)
 // extended past the FDP limit. An increased FDP requires at least 12 hrs (10.6.1).
 // Displacement time is zero — all operations are in a single time zone.
+// R13 — CAO 48.1 6.3(e) and its note: duty performed after an FDP (dead head
+// travel under OMY 12.3.1, and NFD after a task generally) is duty and part of
+// the duty period, so the off-duty period can't start until it ends. It isn't
+// part of the FDP itself (6.3(d)), but it IS added to the FDP when working out
+// the minimum off-duty period that follows. Counted between the end of the FDP
+// and the point rest actually starts.
+function postFDPDutyHours(entry, all, restStart){
+  const entryEnd = entryDates(entry).end.getTime();
+  const stop = restStart.getTime();
+  if(stop <= entryEnd) return 0;
+  const ivs = mergeIntervals(all
+    .filter(e => (e.type==='NFD' || e.type==='FDP') && String(e.id) !== String(entry.id))
+    .map(e => { const d = entryDates(e); return { start:d.start.getTime(), end:d.end.getTime() }; }));
+  let sum = 0;
+  for(const iv of ivs){
+    const s = Math.max(iv.start, entryEnd), en = Math.min(iv.end, stop);
+    if(en > s) sum += (en - s)/3600000;
+  }
+  return sum;
+}
 function requiredODPHours(entry, all, effectiveEnd){
   if(!entry || (entry.type!=='FDP' && entry.type!=='STANDBY')) return 0;
   const end = effectiveEnd || entryDates(entry).end;
   let hours = minODPHours(end);
   if(entry.type === 'FDP'){
-    const dur = durationHours(entry);
+    const postDuty = postFDPDutyHours(entry, all, end);
+    const dur = durationHours(entry) + postDuty;
     const extHrs = (entry.extType && entry.extType!=='none') ? Number(entry.extHours||0) : 0;
     if(extHrs > 0){
       // 1 hour for every 30 minutes, or part of 30 minutes, extended past the limit
@@ -2136,21 +2172,26 @@ function renderDashboard(){
   const lastDutyish = [lastFDP, lastStandby].filter(Boolean)
     .sort((a,b)=> entryDates(b).end - entryDates(a).end)[0];
   const prevDuty = lastDutyish ? previousDutyBefore(entries, dutyBlockStart(entries, lastDutyish)) : null;
-  const st = prevDuty ? odpStatus(prevDuty, entries, sameDayDutyEnd(prevDuty, entries)) : null;
+  const prevRestStart = prevDuty ? sameDayDutyEnd(prevDuty, entries) : null;
+  const st = prevDuty ? odpStatus(prevDuty, entries, prevRestStart) : null;
+  // R13 (6.3 note): say so when duty after the FDP — dead head travel, or any
+  // NFD before rest started — has been added to the FDP for this calculation.
+  const postDuty = (prevDuty && prevDuty.type === 'FDP') ? postFDPDutyHours(prevDuty, entries, prevRestStart) : 0;
+  const postDutyNote = postDuty > 0 ? ` · incl. ${fmtHrs(postDuty)}h duty after the FDP (6.3)` : '';
   if(st){
     if(st.actual === null){
       // Shouldn't normally occur (prevDuty was found precisely because it
       // ends at/before lastDutyish's start), but guard anyway.
       html += minGaugeHTML('Off-Duty Period (10.12.3)', 0, st.required, 'hrs',
-        `${fmtHrs(st.required)}h required after ${prevDuty.type} ending ${fmtLogDate(prevDuty.date)}`,
+        `${fmtHrs(st.required)}h required after ${prevDuty.type} ending ${fmtLogDate(prevDuty.date)}${postDutyNote}`,
         'pending');
     } else if(st.actual < st.required){
       html += minGaugeHTML('Off-Duty Period (10.12.3)', st.actual, st.required, 'hrs',
-        `Shortfall after ${prevDuty.type} ending ${fmtLogDate(prevDuty.date)} — ${lastDutyish.type} on ${fmtLogDate(lastDutyish.date)} started ${fmtHrs(st.required - st.actual)}h too early`,
+        `Shortfall after ${prevDuty.type} ending ${fmtLogDate(prevDuty.date)} — ${lastDutyish.type} on ${fmtLogDate(lastDutyish.date)} started ${fmtHrs(st.required - st.actual)}h too early${postDutyNote}`,
         'shortfall');
     } else {
       html += minGaugeHTML('Off-Duty Period (10.12.3)', st.actual, st.required, 'hrs',
-        `${fmtHrs(st.actual)}h taken after ${prevDuty.type} ending ${fmtLogDate(prevDuty.date)}, before ${lastDutyish.type} on ${fmtLogDate(lastDutyish.date)} — requirement met`,
+        `${fmtHrs(st.actual)}h taken after ${prevDuty.type} ending ${fmtLogDate(prevDuty.date)}, before ${lastDutyish.type} on ${fmtLogDate(lastDutyish.date)} — requirement met${postDutyNote}`,
         'met');
     }
   } else if(lastDutyish){
@@ -2408,10 +2449,15 @@ function kssStandDownHours(entry){
 // (requiredODPHours) already used for the general post-FDP rest check.
 function extensionStandDownHours(entry, all){
   if(entry.type !== 'FDP') return 0;
+  // R13: post-FDP duty counts towards the FDP for rest purposes, so it counts
+  // towards the over-12h trigger too, and rest is measured from the point duty
+  // actually ends rather than from the task's own end.
+  const restStart = sameDayDutyEnd(entry, all);
   const extHrs = (entry.extType && entry.extType!=='none') ? Number(entry.extHours||0) : 0;
-  const triggered = extHrs > 0 || entry.increasedFDP || durationHours(entry) > 12;
+  const totalDuty = durationHours(entry) + postFDPDutyHours(entry, all, restStart);
+  const triggered = extHrs > 0 || entry.increasedFDP || totalDuty > 12;
   if(!triggered) return 0;
-  return requiredODPHours(entry, all);
+  return requiredODPHours(entry, all, restStart);
 }
 // Combines both triggers per task, taking the LARGER (not additive) —
 // anchored to that specific task's own end, per 10.8.1's "commences not
@@ -2424,10 +2470,13 @@ function mandatoryRestBands(all){
     const extH = extensionStandDownHours(e, all);
     const hours = Math.max(kssH, extH);
     if(hours <= 0) continue;
+    // A KSS stand-down runs from the task itself; a post-FDP rest requirement
+    // can't start until any duty after the task (e.g. dead head travel) ends.
     const {end} = entryDates(e);
-    const restEnd = new Date(end.getTime() + hours*3600000);
+    const anchor = (extH > kssH) ? sameDayDutyEnd(e, all) : end;
+    const restEnd = new Date(anchor.getTime() + hours*3600000);
     const kssScore = Math.max(Number(e.kssStart)||0, Number(e.kssEnd)||0);
-    bands.push({ start: end.getTime(), end: restEnd.getTime(), sourceEntry: e, hours, via: extH > kssH ? 'ext' : 'kss', kssScore });
+    bands.push({ start: anchor.getTime(), end: restEnd.getTime(), sourceEntry: e, hours, via: extH > kssH ? 'ext' : 'kss', kssScore });
   }
   return bands;
 }
@@ -2868,6 +2917,19 @@ document.getElementById('cancelEditBtn').addEventListener('click', ()=>{
   exitEditMode();
 });
 
+// Step the log form's date a day at a time, like the Time Line's Prev/Next.
+// Built from the field's own value rather than a Date, so it can't drift
+// across a timezone boundary the way toISOString() once did.
+function shiftFormDate(days){
+  const el = document.getElementById('f-date');
+  const parts = (el.value || todayISO()).split('-').map(Number);
+  if(parts.length !== 3 || parts.some(isNaN)) { el.value = todayISO(); return; }
+  const d = new Date(parts[0], parts[1]-1, parts[2]);
+  d.setDate(d.getDate() + days);
+  el.value = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+document.getElementById('fDatePrev').addEventListener('click', ()=> shiftFormDate(-1));
+document.getElementById('fDateNext').addEventListener('click', ()=> shiftFormDate(1));
 document.getElementById('todayBtn').addEventListener('click', ()=>{
   document.getElementById('f-date').value = todayISO();
 });
