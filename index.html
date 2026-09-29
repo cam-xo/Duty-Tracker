@@ -301,7 +301,14 @@
       <div>Local time</div>
       <b id="liveClock">--:--:--</b>
     </div>
-    <button class="btn-ghost" id="signOutBtn" style="width:auto; padding:8px 14px;" title="Sign out">Sign Out</button>
+    <div class="clock" style="text-align:right;">
+      <div>Data</div>
+      <b id="syncStatus">Loading…</b>
+    </div>
+    <div style="display:flex; flex-direction:column; align-items:flex-end; gap:6px;">
+      <span id="userEmailLabel" style="font-size:12px; color:var(--muted);"></span>
+      <button class="btn-ghost" id="signOutBtn" style="width:auto; padding:8px 14px;" title="Sign out">Sign Out</button>
+    </div>
   </div>
 </div>
 
@@ -492,16 +499,17 @@
         <li>Calculations follow the FDP, cumulative duty/flight time, LNO and standby limits set out in your FMS manual (based on CAO 48.1 Appendix 4B).</li>
         <li><b>How an FDP is measured (10.6, 10.8, 10.10):</b> each FDP entry is a <b>task</b>. The FDP itself starts at the first tasking and runs until the end of its last task, and every task stays in the same FDP until a real off-duty period separates them — standby is not off duty (1.3.1), and 10.10 requires an off-duty period after a call-out FDP before another FDP can start. So the time between tasks counts as FDP time, and a rest of 2+ hours extends the limit instead (10.8.1 caps "the FDP period including the rest period" at 16h; Tables 7 and 8 both measure the extended limit from the original start with the rest inside it). The limit is Table 6 by the first tasking time, plus split duty rest and any extension, less NFD in the 8 hours before the FDP started, capped at 16h.</li>
         <li>Split duty rest is calculated automatically: any gap of at least 2 consecutive hours between tasks qualifies, measured from the end of the task (which already includes the 30 min after landing, per 10.8.1). Standby counts as rest — it is free of all duties with sleeping accommodation — but NFD does not, so an NFD splits a gap into shorter pieces. It is not applied to an increased FDP, per 10.6.1. Per 10.8.1's second condition, the remaining portion after the most recent qualifying rest is also capped at a fresh Table 6 lookup at the resumption time.</li>
-        <li>Mandatory rest bands on the Time Line now cover two separate triggers per 10.5, taking whichever is larger (not additive): a KSS score of 7 gives a fixed 3h rest; a KSS score of 8 or 9 gives the Table 10 base (8h/10h by completion time) — the manual's own reference for KSS>=8 ("Minimum ODP as per Table 4") is a documented error, since Table 4 is just the descriptive 1-9 scale with no ODP data, so Table 10 is used instead. Separately, any FDP that actually needed an extension, was increased, or organically ran past 12h gets the full Table 10 formula (base + extension component), same as 10.12.3. Each band is anchored to that specific task's own end and flags a conflict if the containing standby is still logged as running into the rest window, or if anything else starts during it.</li>
+        <li>Mandatory rest bands on the Time Line now cover two separate triggers per 10.5, taking whichever is larger (not additive): a KSS score of 7 gives a fixed 3h rest; a KSS score of 8 or 9 gives the <b>full 10.12.3 rest</b> (Table 10 base plus the over-12h or extension component) per ruling R6 — the manual's own reference for KSS&gt;=8 ("Minimum ODP as per Table 4") is a documented error, since Table 4 is just the descriptive 1-9 scale with no ODP data. Separately, any FDP that actually needed an extension, was increased, or organically ran past 12h gets the full Table 10 formula (base + extension component), same as 10.12.3. Each band is anchored to the end of that day's duty — rest cannot start while dead head travel or a standby is still running (R13) — and flags a conflict if the containing standby is still logged as running into the rest window, or if anything else starts during it.</li>
         <li><b>Conservative assumption:</b> within that rest gap, only the portion falling between 2100–0600 is treated as genuine sleeping accommodation (full credit, per Table 7) — it's unrealistic to assume someone actually sleeps during the day even though sleeping accommodation is available. The portion falling 0600–2100 is treated as resting accommodation only (half credit, capped at 2 hours total, per Table 8). The full raw gap (unweighted) is still what counts at 50% toward cumulative duty per Table 12.</li>
+        <li><b>Table 10 (10.12.3) is read by where the rest falls</b>, not by when duty finished &mdash; the table's middle column is headed "Off Duty Time Period" (ruling R2). A day shift finishing in the day or evening has its rest through the night, so 8 hrs applies; a night shift finishing in the early hours has to sleep through the following day, so 10 hrs applies. In the app: rest starting 0600&ndash;2259 &rarr; 8 hrs, rest starting 2300&ndash;0559 &rarr; 10 hrs. This is the reverse of versions up to v0.61.0, which read the same clock times off the shift-completed column.</li>
         <li>The 40-vs-60-hour 7-day duty cap checks for a 36+ hour off-duty gap that fully contains at least 2 local nights (an 8+ hour break covering 2200–0500), based on your rosters being in a single time zone.</li>
         <li>Late Night Operations are counted once per local night regardless of how many FDPs occurred, per the note under 10.13.</li>
         <li>Cumulative duty windows clip entries to the window boundary and merge overlapping entries, so a duty straddling the 7- or 14-day cutoff counts only for the portion inside it.</li>
-        <li>The Time Line's "required rest" band only follows a rostered Standby period, anchored at the later of the standby's own end or the end of any NFD/FDP that started during it (Table 10 base by completion time, plus extra for an FDP running over 12 hrs, using an extension, or an increased FDP's 12-hour floor). Shortfalls show as a red hatched "rest conflict" band. Standalone FDPs with no enclosing standby don't get a rest band on the Time Line.</li>
+        <li>The Time Line's "required rest" band only follows a rostered Standby period, anchored at the later of the standby's own end or the end of any NFD/FDP that started during it (Table 10 base &mdash; 8h where the rest starts 0600&ndash;2259, 10h where it starts 2300&ndash;0559, per ruling R2 &mdash; plus extra for an FDP running over 12 hrs, using an extension, or an increased FDP's 12-hour floor). Shortfalls show as a red hatched "rest conflict" band. Standalone FDPs with no enclosing standby don't get a rest band on the Time Line.</li>
         <li><b>Flight Time (Shift)</b> sums flight time across every FDP overlapping the relevant standby period (today's ongoing or most recently finished one; on a past day, whichever standby's end falls on that date), or the calendar day's FDPs if no standby applies — same day-resolution rules as LIVE/CURRENT/PAST FDP. The 10h/12h shown as its "max" is the per-FDP flight time limit (10.6) shown purely as a visual size reference — there's no actual regulatory cap on total flight time per shift, so this tile can legitimately show "over" without that meaning any rule was broken.</li>
         <li>The Off-Duty Period tile in Live Status checks the rest taken <b>before</b> the most recent FDP or standby as of the day being viewed (not just standby periods, unlike the Time Line's per-standby view) — the two are worth reading together rather than expecting them to always agree. It only ever looks at the gap immediately preceding what's most recent for the selected day; it does not surface older unresolved shortfalls from further back in your history.</li>
         <li><b>Preceding Rest (10.12.2)</b> checks whether at least one qualifying off-duty period occurred somewhere in the trailing 14 days (36h including 2 local nights, Table 9) or, failing that, the trailing 21 days (72h including 3 local nights). Live mode checks as if you were starting a new duty right now. Historic and Future modes both check against whatever duty <b>starts</b> on the displayed day — a standby if one exists, otherwise the earliest FDP (e.g. a training/sim day logged without a standby) — if neither has been entered for that day, the check simply doesn't run, since there's nothing to anchor it to.</li>
-        <li><b>Cumulative Fatigue Recovery (10.12.1)</b> is triggered if, in the trailing 7 days, you've had 3+ late night FDPs or used an increased FDP — once triggered, a 36h/2-local-night break is owed until one has been taken (reuses the same 36h/2-night definition as the 7-day 40h/60h cumulative duty cap decision). Shows "Not triggered" when neither condition applies.</li>
+        <li><b>Cumulative Fatigue Recovery (10.12.1)</b> follows ruling R7, which reads 10.9/10.12.1 as two separate protections. Exactly <b>3</b> late night operations in the trailing 7 days owes no recovery break — the protection at that level is the 7-day cumulative duty cap dropping to 40 hrs, applied by the Cumulative Duty (7d) gauge. <b>More than 3</b> requires 36 hrs off duty over 2 local nights, and that break must fall <b>after the 4th LNO</b>, before any further duty. An increased FDP in the window triggers the same break (R11), which must then follow the increased FDP; where both apply the break must follow whichever came later. A qualifying break earlier in the same 7 days no longer counts.</li>
         <li>The Duty tile's maximum is a local convention, not a rule from the manual: Table 6 is defined against FDP start time, and this applies it to the standby start time instead. Treat it as a rough reference only.</li>
         <li>A KSS score of 7 recorded at either the start or end of an FDP adds a mandatory 3-hour rest (10.5) shown above the line on the Time Line, immediately after that task. Any NFD or FDP starting during that window is flagged as a conflict, same as the other rest-conflict bands.</li>
         <li>The reduction of a calculated off-duty period to 12 hours (10.12.3) is not modelled.</li>
@@ -564,7 +572,7 @@ const firebaseConfig = {
              calculated (anything that can change a number on screen).
      PATCH — bug fixes and wording that don't change the rules.
    Set here only; the title and header read from it. */
-const APP_VERSION = '0.60.0';
+const APP_VERSION = '0.62.0';
 // Applied immediately rather than in init(), which only runs after sign-in —
 // otherwise the login screen shows a blank version tag.
 document.getElementById('versionTag').textContent = `v${APP_VERSION}`;
@@ -575,43 +583,152 @@ const auth = firebase.auth();
 const db = firebase.firestore();
 
 /* ---------------- Storage ---------------- */
-// Server state is kept live via a Firestore onSnapshot listener (attached on
-// sign-in, detached on sign-out) instead of an explicit .get() before every
-// save. Previously saveEntries() did its own read-before-write purely to
-// catch entries another device might have added since our last load/save —
-// that's exactly what a real-time listener is for, and it removes a full
-// round-trip from every single save.
+// Three rules govern this layer, each fixing a specific failure:
 //
-// serverEntriesCache and lastLoadedIds are deliberately two SEPARATE things:
-// serverEntriesCache is just "whatever the server's latest raw doc says",
-// refreshed continuously and passively by the listener. lastLoadedIds must
-// only change at moments our in-memory `entries` variable itself was
-// actually set to match the server (end of loadEntries(), end of a
-// successful saveEntries()) — it's "what our LOCAL state has incorporated",
-// used to tell a genuinely-new remote addition apart from one we ourselves
-// deleted. Updating lastLoadedIds straight from the passive listener instead
-// would silently drop a remote addition: the listener could see it and mark
-// it "known" before our own in-memory `entries` ever actually picked it up,
-// so the next save's recovery check would wrongly treat it as an
-// intentional local deletion instead of something to recover.
+//  B1  Nothing may be written until the server (or a trusted offline cache)
+//      has told us what is actually stored. Before that the in-memory list is
+//      an empty placeholder, and writing it would replace the real history
+//      with whatever happens to be on screen.
+//  B2  A write that does not land must be visible. Failures used to go to the
+//      console only, so a save could silently do nothing.
+//  B3  A change made on another device must appear here without a reload, and
+//      must never be reverted by a save from a device holding older data.
+//
+// serverEntriesCache and lastLoadedIds stay two separate things.
+// serverEntriesCache is "whatever the server's latest doc says", refreshed
+// passively by the listener. lastLoadedIds is "what our LOCAL state has
+// actually incorporated", and moves only when `entries` itself is set to
+// match — after a load, after a successful save, or after a remote snapshot
+// is applied below. Updating it straight from the listener would let a
+// remote addition be marked known before `entries` ever picked it up, and
+// the next save's recovery check would then read it as a local deletion.
 let currentUid = null;
 let serverEntriesCache = null;
 let lastLoadedIds = new Set();
 let unsubscribeEntriesListener = null;
 let entriesReadyPromise = null;
 let entriesReadyResolve = null;
+let dataState = 'loading';     // 'loading' | 'ready' | 'error' — gates every write
+let dataError = '';
+let pendingWrites = 0;
+let lastSaveError = '';
+
+// Offline cache. With it, a returning device opened offline gets its real
+// entries from disk instead of an empty document, and writes made offline are
+// queued and replayed on reconnect. Failure is not fatal: it only means the
+// offline paths above degrade to "can't confirm, so don't write" (B1 still
+// holds). Must run before any other Firestore call.
+let persistenceReady = db.enablePersistence({ synchronizeTabs: true })
+  .catch(err => {
+    // failed-precondition = another tab already holds it; unimplemented = browser can't.
+    console.warn('Offline persistence unavailable:', err && err.code);
+  });
+
+function entriesSignature(list){
+  return JSON.stringify((list || []).map(e => [e.id, e.type, e.date, e.startTime, e.endTime,
+    e.notes||'', e.flightTime||'', e.kssStart||'', e.kssEnd||'', !!e.increasedFDP, e.extType||'', e.extHours||0])
+    .sort((a,b)=> String(a[0]) < String(b[0]) ? -1 : 1));
+}
+
+function setDataState(state, message){
+  dataState = state;
+  dataError = message || '';
+  renderSyncStatus();
+  applyDataGate();
+}
+
+// Every control that writes is disabled until the data is known to be real.
+function applyDataGate(){
+  const ready = dataState === 'ready';
+  ['addBtn','importBtn','deleteAllBtn'].forEach(id=>{
+    const el = document.getElementById(id);
+    if(!el) return;
+    el.disabled = !ready;
+    el.style.opacity = ready ? '' : '0.45';
+    el.style.cursor = ready ? '' : 'not-allowed';
+    el.title = ready ? '' : 'Waiting for your saved data to load';
+  });
+  document.querySelectorAll('.del-btn').forEach(b=>{
+    b.disabled = !ready;
+    b.style.opacity = ready ? '' : '0.45';
+  });
+}
+
+function renderSyncStatus(){
+  const el = document.getElementById('syncStatus');
+  if(!el) return;
+  let text, color, title;
+  if(dataState === 'loading'){
+    text = 'Loading…'; color = 'var(--muted)';
+    title = 'Waiting for your saved entries. Adding or editing is disabled until they arrive.';
+  } else if(dataState === 'error'){
+    text = 'Not loaded'; color = 'var(--red)';
+    title = dataError || 'Your entries could not be loaded, so saving is disabled to protect them. Reload to retry.';
+  } else if(lastSaveError){
+    text = 'Save failed'; color = 'var(--red)';
+    title = lastSaveError + ' — your change is still on screen but is not stored. Reload once back online to check.';
+  } else if(pendingWrites > 0){
+    if(navigator.onLine === false){
+      text = `Offline · ${pendingWrites} queued`; color = 'var(--amber)';
+      title = 'Saved on this device and queued. It will sync when you are back online.';
+    } else {
+      text = 'Saving…'; color = 'var(--amber)';
+      title = 'Sending your change.';
+    }
+  } else {
+    text = 'Saved'; color = 'var(--green)';
+    title = 'All changes are stored.';
+  }
+  el.textContent = text;
+  el.style.color = color;
+  el.title = title;
+}
+window.addEventListener('online', renderSyncStatus);
+window.addEventListener('offline', renderSyncStatus);
 
 function attachEntriesListener(uid){
+  setDataState('loading');
   entriesReadyPromise = new Promise(resolve => { entriesReadyResolve = resolve; });
   unsubscribeEntriesListener = db.collection('users').doc(uid).onSnapshot(
+    { includeMetadataChanges: true },
     doc => {
+      const meta = doc.metadata || {};
+      // Is this snapshot trustworthy as "what is stored"?
+      //   exists                    -> real data, from cache or server
+      //   !exists && !fromCache     -> the server confirms there is no document yet
+      //   !exists &&  fromCache     -> offline with nothing cached: unknown, keep waiting
+      const trustworthy = doc.exists || !meta.fromCache;
+      if(!trustworthy) return;
+
       const loaded = (doc.exists && Array.isArray(doc.data().entries)) ? doc.data().entries : [];
       serverEntriesCache = loaded;
-      if(entriesReadyResolve){ entriesReadyResolve(loaded); entriesReadyResolve = null; }
+
+      if(entriesReadyResolve){
+        entriesReadyResolve(loaded);
+        entriesReadyResolve = null;
+        setDataState('ready');
+        return;
+      }
+
+      // B3 — a change from elsewhere. Our own in-flight writes echo back with
+      // hasPendingWrites set; those already match `entries`, so skip them.
+      if(meta.hasPendingWrites) return;
+      if(entriesSignature(loaded) === entriesSignature(entries)) return;
+
+      const editingGone = editingId && !loaded.some(e => String(e.id) === String(editingId));
+      entries = loaded;
+      lastLoadedIds = new Set(loaded.map(e => e.id));
+      if(editingGone){
+        exitEditMode();
+        alert('The entry you were editing was changed or deleted on another device, so the form has been reset.');
+      }
+      renderAll();
+      renderSyncStatus();
     },
     err => {
       console.error('Entries listener failed', err);
-      if(entriesReadyResolve){ entriesReadyResolve([]); entriesReadyResolve = null; }
+      if(entriesReadyResolve){ entriesReadyResolve(null); entriesReadyResolve = null; }
+      setDataState('error', (err && err.message) ? err.message : 'Could not reach your saved data.');
     }
   );
 }
@@ -621,42 +738,64 @@ function detachEntriesListener(){
   lastLoadedIds = new Set();
   entriesReadyPromise = null;
   entriesReadyResolve = null;
+  pendingWrites = 0;
+  lastSaveError = '';
+  setDataState('loading');
 }
 async function loadEntries(){
   try{
     const loaded = await entriesReadyPromise;
-    lastLoadedIds = new Set((loaded || []).map(e=>e.id));
-    return loaded || [];
-  }catch(e){ console.error('Load failed', e); lastLoadedIds = new Set(); return []; }
+    if(loaded === null){ lastLoadedIds = new Set(); return []; }  // error state; saves stay blocked
+    lastLoadedIds = new Set(loaded.map(e=>e.id));
+    return loaded;
+  }catch(e){
+    console.error('Load failed', e);
+    lastLoadedIds = new Set();
+    setDataState('error', 'Could not load your saved data.');
+    return [];
+  }
 }
-// Multi-device safety net: before overwriting, check whether the server has
-// entries that weren't part of our last known snapshot (i.e. added by
-// another device since we loaded) and preserve them, rather than blindly
-// overwriting with only what this device knows about. Entries deliberately
-// deleted here were already part of our last snapshot, so they're correctly
-// NOT resurrected by this check. serverEntriesCache comes from the live
-// listener above, not a fresh read — this can still only resolve two
-// devices editing the exact same entry at once with last-write-wins for
-// that one entry, same limitation as before.
+// Multi-device safety net: preserve entries the server has that were never
+// part of our last known state (i.e. added elsewhere since), rather than
+// overwriting with only what this device knows. Entries deliberately deleted
+// here were in our last snapshot, so they are correctly not resurrected.
+// The listener above now applies remote changes as they arrive, so this
+// mainly covers the narrow window between a snapshot and a save.
+//
+// The write is deliberately NOT awaited for the caller's benefit: with
+// offline persistence a queued write's promise stays pending until the device
+// reconnects, so awaiting it would hang the UI offline. The local cache and
+// `entries` are updated immediately; the promise only drives the indicator.
 async function saveEntries(newEntries){
-  try{
-    const serverEntries = Array.isArray(serverEntriesCache) ? serverEntriesCache : [];
-    const localIds = new Set(newEntries.map(e=>e.id));
-    const merged = [...newEntries];
-    let recovered = 0;
-    for(const se of serverEntries){
-      if(!localIds.has(se.id) && !lastLoadedIds.has(se.id)){
-        merged.push(se);
-        recovered++;
-      }
+  if(dataState !== 'ready'){
+    alert('Your saved entries have not loaded yet, so nothing can be written.\n\nThis guard exists to stop a partial view overwriting your history. Reload the page once you are back online.');
+    return false;
+  }
+  const serverEntries = Array.isArray(serverEntriesCache) ? serverEntriesCache : [];
+  const localIds = new Set(newEntries.map(e=>e.id));
+  const merged = [...newEntries];
+  let recovered = 0;
+  for(const se of serverEntries){
+    if(!localIds.has(se.id) && !lastLoadedIds.has(se.id)){
+      merged.push(se);
+      recovered++;
     }
-    await db.collection('users').doc(currentUid).set({ entries: merged }, { merge: true });
-    lastLoadedIds = new Set(merged.map(e=>e.id));
-    if(recovered > 0){
-      entries = merged;
-      renderAll();
-    }
-  }catch(e){ console.error('Save failed', e); }
+  }
+  entries = merged;
+  lastLoadedIds = new Set(merged.map(e=>e.id));
+  lastSaveError = '';
+  pendingWrites++;
+  renderSyncStatus();
+  db.collection('users').doc(currentUid).set({ entries: merged }, { merge: true })
+    .then(()=>{ pendingWrites = Math.max(0, pendingWrites-1); renderSyncStatus(); })
+    .catch(err=>{
+      pendingWrites = Math.max(0, pendingWrites-1);
+      lastSaveError = (err && err.message) ? err.message : 'Save failed';
+      console.error('Save failed', err);
+      renderSyncStatus();
+    });
+  if(recovered > 0) renderAll();
+  return true;
 }
 
 let entries = [];
@@ -701,6 +840,11 @@ function fmtMarkerTime(when, ref){
     return `${when.toLocaleDateString([], {weekday:'short'})} ${t}`;
   }
   return t;
+}
+// Day-and-time, for text that refers to a moment several days away from the
+// day on screen (the 10.12.1 recovery break, for instance).
+function fmtDateTimeShort(when){
+  return `${when.toLocaleDateString([], {weekday:'short', day:'2-digit', month:'short'})} ${when.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', hour12:false})}`;
 }
 function fmtHrs(h){
   if(h === null || h === undefined || isNaN(h)) return '—';
@@ -1365,22 +1509,94 @@ function hasQualifyingGap(all, hoursBack, ref){
   }
   return false;
 }
+// As above, but the break only counts if it begins at or after `fromMs` — the
+// recovery break owed under 10.12.1 has to be taken AFTER the duty that
+// triggered it, so a 36h/2-night gap earlier in the same 7 days does not
+// discharge the obligation (finding C4, fix directed by ruling R7).
+// Returns the gap found, or null.
+function qualifyingGapAfter(all, fromMs, ref){
+  const relevant = all.filter(e => ['FDP','NFD','STANDBY'].includes(e.type))
+    .map(entryDates).sort((a,b)=>a.start-b.start);
+  for(let i=1;i<relevant.length;i++){
+    const gapStart = relevant[i-1].end, gapEnd = relevant[i].start;
+    if(gapStart.getTime() < fromMs) continue;
+    const gapHours = (gapEnd - gapStart)/3600000;
+    if(gapHours >= 36 && localNightsInGap(gapStart, gapEnd) >= 2){
+      return { start: gapStart.getTime(), end: gapEnd.getTime(), hours: gapHours };
+    }
+  }
+  // A break that is still running: nothing is rostered after the last duty, so
+  // measure the open gap up to the point being checked. It only qualifies once
+  // 36 hours and two local nights have actually elapsed.
+  const last = relevant[relevant.length-1];
+  if(last && last.end.getTime() >= fromMs){
+    const openHours = (ref.getTime() - last.end.getTime())/3600000;
+    if(openHours >= 36 && localNightsInGap(last.end, ref) >= 2){
+      return { start: last.end.getTime(), end: ref.getTime(), hours: openHours, open:true };
+    }
+  }
+  return null;
+}
+// The distinct local nights on which an LNO was conducted inside the window,
+// in order, each carrying the latest FDP end that contributed to it. Used to
+// find when the 4th LNO finished — the point from which the 10.12.1 recovery
+// break must be taken (ruling R7).
+function lnoNightsInWindow(all, hoursBack, ref){
+  const cutoff = ref.getTime() - hoursBack*3600000;
+  const nights = new Map();   // local-night key -> latest contributing FDP end
+  for(const e of all){
+    if(e.type!=='FDP') continue;
+    const {start, end} = entryDates(e);
+    if(start.getTime() < cutoff || start.getTime() > ref.getTime()) continue;
+    for(const k of lateNightKeys(e)){
+      const prev = nights.get(k);
+      if(prev === undefined || end.getTime() > prev) nights.set(k, end.getTime());
+    }
+  }
+  return [...nights.entries()]
+    .map(([key, endMs]) => ({ key, endMs, nightMs: new Date(key).getTime() }))
+    .sort((a,b) => a.nightMs - b.nightMs);
+}
 
 /* ---------------- 10.12.1 Off Duty Cumulative Fatigue Recovery ---------------- */
-// In any 168 hours (7 days), if you've cumulatively conducted 3+ late night
-// FDPs, or used an increased FDP, you must be off duty for a minimum of 36
-// hours including 2 local nights. Reuses countLNOWindow and
-// hasQualifyingGap — the same 36h/2-night definition already used for the
-// 7-day 40/60h cumulative duty cap decision.
+// Ruling R7 (29 Sep) reads 10.9/10.12.1 as two separate protections rather than
+// one, and that is what is modelled here:
+//
+//   Exactly 3 LNO in 7 days -> no recovery break is owed. The protection at
+//     that level is the 7-day cumulative duty cap dropping to 40 hours, which
+//     the Cumulative Duty (7d) gauge applies independently.
+//   MORE than 3 LNO        -> 36 hours off duty over two local nights, and that
+//     break must be taken after the 4th LNO, before any further duty.
+//
+// An increased FDP inside the window triggers the same break (ruling R11); the
+// break then has to follow the increased FDP for the same reason. Where both
+// apply, the break must follow whichever came later.
 function cumulativeFatigueRecoveryCheck(checkPoint, all){
   const lno7 = countLNOWindow(all, 168, checkPoint);
   const cutoff = checkPoint.getTime() - 168*3600000;
-  const increasedFDPUsed = all.some(e => e.type==='FDP' && e.increasedFDP
+  const increasedFDPs = all.filter(e => e.type==='FDP' && e.increasedFDP
     && entryDates(e).start.getTime() >= cutoff && entryDates(e).start.getTime() <= checkPoint.getTime());
-  const triggered = lno7 >= 3 || increasedFDPUsed;
-  if(!triggered) return { triggered:false, lno7, increasedFDPUsed };
-  const satisfied = hasQualifyingGap(all, 168, checkPoint);
-  return { triggered:true, satisfied, lno7, increasedFDPUsed };
+  const increasedFDPUsed = increasedFDPs.length > 0;
+  const lnoTriggered = lno7 > 3;
+  const triggered = lnoTriggered || increasedFDPUsed;
+  if(!triggered) return { triggered:false, lno7, increasedFDPUsed, lnoTriggered };
+
+  // The point the break must follow.
+  let anchorMs = null, anchorWhat = [];
+  if(lnoTriggered){
+    const nights = lnoNightsInWindow(all, 168, checkPoint);
+    if(nights.length >= 4){ anchorMs = nights[3].endMs; anchorWhat.push('the 4th late night operation'); }
+  }
+  if(increasedFDPUsed){
+    const lastIncr = Math.max(...increasedFDPs.map(e => entryDates(e).end.getTime()));
+    if(anchorMs === null || lastIncr > anchorMs){ anchorMs = lastIncr; anchorWhat = ['the increased FDP']; }
+    else anchorWhat.push('the increased FDP');
+  }
+  if(anchorMs === null) anchorMs = cutoff;   // defensive: fall back to the window
+
+  const gap = qualifyingGapAfter(all, anchorMs, checkPoint);
+  return { triggered:true, satisfied: !!gap, gap, anchorMs, anchorWhat,
+           lno7, increasedFDPUsed, lnoTriggered };
 }
 
 function lastOfType(all, type, asOf){
@@ -1464,7 +1680,8 @@ function flightTimeLimitFor(entry){
 }
 
 // Minimum ODP owed after completing an FDP or a Standby period.
-// Base from Table 10 by completion time (2300-0559 -> 8h, 0600-2259 -> 10h),
+// Base from Table 10 by where the REST falls, not by completion time (rest
+// starting 0600-2259 -> 8h, rest starting 2300-0559 -> 10h; ruling R2),
 // plus, for an FDP: time the FDP exceeded 12 hrs, or 1 hr per 30 min (or part)
 // extended past the FDP limit. An increased FDP requires at least 12 hrs (10.6.1).
 // Displacement time is zero — all operations are in a single time zone.
@@ -1601,12 +1818,33 @@ function allODPConflicts(all){
   }
   return out.sort((a,b)=> entryDates(b.entry).end - entryDates(a.entry).end);
 }
-// Table 10 approximation: minimum off-duty period based on time of day duty ends.
-// Completion between 2300-0559 -> 8h min ("Day" bucket); 0600-2259 -> 10h min ("Night" bucket).
-function minODPHours(endDate){
-  const mins = endDate.getHours()*60 + endDate.getMinutes();
-  const inDayWindow = (mins >= 1380 || mins <= 359); // 23:00–05:59
-  return inDayWindow ? 8 : 10;
+// Table 10: minimum off-duty period after an FDP. The table's middle column is
+// headed "Off Duty Time Period", so the 8h/10h split turns on where the REST
+// falls, not on when duty finished (ruling R2, 29 Sep):
+//
+//   Shift Completed "Day"   | off duty 2300–0559 | 8 hours
+//   Shift Completed "Night" | off duty 0600–2259 | 10 hours
+//
+// A day shift finishes in the day or evening, so its rest occupies the night
+// (2300–0559) and 8 hours suffices. A night shift finishes in the early hours,
+// so its rest has to be taken through the following day (0600–2259), which
+// sleeps worse — hence 10 hours. Rest begins when duty ends, so the bucket is
+// decided by which window the rest STARTS in.
+//
+// This is the reverse of what the app did up to v0.61.0, which read the same
+// clock time as the shift-completed column: a 0300 finish was given 8h when 10h
+// applies, and an 1800 finish 10h where OMY asks for 8h.
+function minODPBucket(restStart){
+  const mins = restStart.getHours()*60 + restStart.getMinutes();
+  const restInNight = (mins >= 1380 || mins <= 359); // rest starts 23:00–05:59
+  return restInNight
+    ? { hours:10, shift:'Night', window:'0600–2259',
+        why:'rest starts 2300–0559, so it runs through the following day' }
+    : { hours:8,  shift:'Day',   window:'2300–0559',
+        why:'rest starts 0600–2259, so it covers the night' };
+}
+function minODPHours(restStart){
+  return minODPBucket(restStart).hours;
 }
 
 /* ---------------- Standby-anchored required rest (Time Line) ---------------- */
@@ -2240,27 +2478,34 @@ function renderDashboard(){
     }
   }
 
-  // 10.12.1 Off Duty Cumulative Fatigue Recovery — triggered by 3+ late night
-  // FDPs or any increased FDP within the trailing 7 days; once triggered, a
-  // 36h/2-night break is owed until one has been taken.
+  // 10.12.1 Off Duty Cumulative Fatigue Recovery — triggered by MORE than 3
+  // late night operations, or any increased FDP, within the trailing 7 days;
+  // once triggered, a 36h/2-night break taken after the triggering duty is owed
+  // until one has been taken (rulings R7 and R11).
   if(mode === 'future'){
     html += statusGaugeHTML('Cumulative Fatigue Recovery (10.12.1)', 'pending', 'N/A', 'Cannot be checked for a future date');
   } else {
     const checkPoint121 = mode==='live' ? nowReal : now;
     const cfr = cumulativeFatigueRecoveryCheck(checkPoint121, entries);
     if(!cfr.triggered){
-      html += statusGaugeHTML('Cumulative Fatigue Recovery (10.12.1)', 'ok', 'Not triggered',
-        `${cfr.lno7} late night FDP${cfr.lno7===1?'':'s'} in trailing 7 days, no increased FDP used — no recovery break owed`);
+      const note = cfr.lno7 === 3
+        ? '3 late night operations in trailing 7 days — no recovery break owed at 3; the protection is the 40h cumulative duty cap below'
+        : `${cfr.lno7} late night operation${cfr.lno7===1?'':'s'} in trailing 7 days, no increased FDP used — no recovery break owed`;
+      html += statusGaugeHTML('Cumulative Fatigue Recovery (10.12.1)', 'ok', 'Not triggered', note);
     } else {
       const triggerText = [];
-      if(cfr.lno7 >= 3) triggerText.push(`${cfr.lno7} late night FDPs in trailing 7 days`);
+      if(cfr.lnoTriggered) triggerText.push(`${cfr.lno7} late night operations in trailing 7 days (more than 3)`);
       if(cfr.increasedFDPUsed) triggerText.push('an increased FDP used in trailing 7 days');
+      const after = cfr.anchorWhat.length
+        ? `, taken after ${cfr.anchorWhat.join(' and ')}`
+        : '';
       if(cfr.satisfied){
+        const g = cfr.gap;
         html += statusGaugeHTML('Cumulative Fatigue Recovery (10.12.1)', 'ok', 'Satisfied',
-          `Triggered by ${triggerText.join(' and ')} — 36h/2-night recovery break already taken`);
+          `Triggered by ${triggerText.join(' and ')} — ${g.hours.toFixed(1)}h break over 2 local nights from ${fmtDateTimeShort(new Date(g.start))}${g.open ? ' and still running' : ''}${after}`);
       } else {
         html += statusGaugeHTML('Cumulative Fatigue Recovery (10.12.1)', 'violation', 'Not satisfied',
-          `Triggered by ${triggerText.join(' and ')} — 36h off duty including 2 local nights required before further duty`);
+          `Triggered by ${triggerText.join(' and ')} — 36h off duty including 2 local nights required before further duty${after}`);
       }
     }
   }
@@ -2391,8 +2636,11 @@ function attachLogRowListeners(container){
       const id = btn.getAttribute('data-id');
       const action = btn.getAttribute('data-action');
       if(action === 'delete'){
+        // If the write is refused (data not loaded), put the row back rather
+        // than leaving the screen showing a deletion that was never stored.
+        const before = entries;
         entries = entries.filter(e=>String(e.id)!==String(id));
-        await saveEntries(entries);
+        if(!await saveEntries(entries)){ entries = before; renderAll(); return; }
         if(String(editingId)===String(id)) exitEditMode();
         renderAll();
       } else if(action === 'edit'){
@@ -2429,17 +2677,20 @@ function clipToDay(start, end, dayStart, dayEnd){
 // KSS=7 mandatory 3-hour rest (10.5): if either the start- or end-of-task KSS
 // assessment on an FDP is exactly 7, a 3-hour rest at suitable sleeping
 // accommodation is required immediately after that task.
-// 10.5 KSS-triggered stand-down: KSS=7 -> fixed 3h sleeping accommodation.
-// KSS>=8 -> the manual's own reference ("Minimum ODP as per Table 4") is a
-// documented error — Table 4 is just the 1-9 KSS descriptive scale and has
-// no ODP data. Table 10 (the standard "minimum ODP" table, same one used
-// for 10.12.3) is used instead, base only — no extension add-on, since that
-// component is specific to FDP-limit-extension scenarios, not fatigue
-// self-assessment.
-function kssStandDownHours(entry){
+// 10.5 KSS-triggered stand-down, settled by ruling R6 (29 Sep):
+//   KSS = 7            -> three hours at suitable sleeping accommodation.
+//   KSS greater than 7 -> the FULL 10.12.3 rest, add-ons included.
+// The manual's own reference for the 8-or-greater case ("Minimum ODP as per
+// Table 4") is a documented error — Table 4 is only the 1–9 KSS descriptive
+// scale and carries no ODP figures. R6 directs the full 10.12.3 calculation,
+// so this now returns requiredODPHours (Table 10 base plus the over-12h or
+// extension component) rather than the Table 10 base alone.
+// Rest cannot begin while duty is still running, so the reference point is
+// the end of the last duty of that day (R13), not the task's own end.
+function kssStandDownHours(entry, all){
   if(entry.type !== 'FDP') return 0;
   const worst = Math.max(Number(entry.kssStart)||0, Number(entry.kssEnd)||0);
-  if(worst >= 8) return minODPHours(entryDates(entry).end);
+  if(worst >= 8) return requiredODPHours(entry, all, sameDayDutyEnd(entry, all));
   if(worst === 7) return 3;
   return 0;
 }
@@ -2466,14 +2717,16 @@ function mandatoryRestBands(all){
   const bands = [];
   for(const e of all){
     if(e.type !== 'FDP') continue;
-    const kssH = kssStandDownHours(e);
+    const kssH = kssStandDownHours(e, all);
     const extH = extensionStandDownHours(e, all);
     const hours = Math.max(kssH, extH);
     if(hours <= 0) continue;
-    // A KSS stand-down runs from the task itself; a post-FDP rest requirement
-    // can't start until any duty after the task (e.g. dead head travel) ends.
-    const {end} = entryDates(e);
-    const anchor = (extH > kssH) ? sameDayDutyEnd(e, all) : end;
+    // Rest can't start while duty is still running, whichever trigger applies:
+    // a KSS score of 8 or more now attracts the full 10.12.3 rest (R6), which
+    // is measured from the end of the day's duty (R13), and dead-head travel
+    // logged after the task is duty. The 3-hour KSS=7 rest is anchored the same
+    // way for the same reason.
+    const anchor = sameDayDutyEnd(e, all);
     const restEnd = new Date(anchor.getTime() + hours*3600000);
     const kssScore = Math.max(Number(e.kssStart)||0, Number(e.kssEnd)||0);
     bands.push({ start: anchor.getTime(), end: restEnd.getTime(), sourceEntry: e, hours, via: extH > kssH ? 'ext' : 'kss', kssScore });
@@ -2739,6 +2992,10 @@ function renderAll(){
   } else if(currentPage === 'calendar'){
     renderCalendar();
   }
+  // renderLog() rebuilds the row buttons from scratch, so the write gate has
+  // to be re-applied after every render or freshly created Delete/Edit
+  // buttons would come back enabled while the data is still unknown.
+  applyDataGate();
 }
 
 /* ---------------- Page switching ---------------- */
@@ -3029,12 +3286,15 @@ document.getElementById('addBtn').addEventListener('click', async ()=>{
     entry.extType = document.getElementById('f-extType').value;
     entry.extHours = document.getElementById('f-extHours').value || 0;
   }
+  const beforeSave = entries;
   if(editingId){
     entries = entries.map(e => String(e.id)===String(editingId) ? entry : e);
   } else {
     entries = [...entries, entry];
   }
-  await saveEntries(entries);
+  // Refused write: restore the list and leave the form as it was so the entry
+  // isn't lost and the screen doesn't claim it was recorded.
+  if(!await saveEntries(entries)){ entries = beforeSave; renderAll(); return; }
   exitEditMode();
 
   // reset a few fields but keep date for convenience
@@ -3095,8 +3355,9 @@ document.getElementById('importFile').addEventListener('change', async (ev)=>{
       existingSignatures.add(sig(item));
       added++;
     }
+    const beforeImport = entries;
     entries = [...entries, ...toAdd];
-    await saveEntries(entries);
+    if(!await saveEntries(entries)){ entries = beforeImport; renderAll(); ev.target.value = ''; return; }
     renderAll();
     const skipped = skippedId + skippedContent;
     alert(`Imported ${added} entr${added===1?'y':'ies'}.${skipped ? ` Skipped ${skipped} duplicate${skipped===1?'':'s'} (${skippedId} by matching ID, ${skippedContent} by matching type/date/time).` : ''}`);
@@ -3119,8 +3380,9 @@ document.getElementById('deleteAllBtn').addEventListener('click', async ()=>{
     alert('Deletion cancelled — input did not match.');
     return;
   }
+  const beforeDeleteAll = entries;
   entries = [];
-  await saveEntries(entries);
+  if(!await saveEntries(entries)){ entries = beforeDeleteAll; renderAll(); return; }
   renderAll();
   alert('All data has been deleted. You can now Import Backup to start fresh.');
 });
@@ -3177,8 +3439,14 @@ document.getElementById('signOutBtn').addEventListener('click', async ()=>{
 async function init(){
   document.getElementById('f-date').value = todayISO();
   setType('STANDBY');
+  // Draw the gated/loading state before the await, so the very first paint
+  // already shows "Loading…" with writing disabled rather than an apparently
+  // empty-but-editable tracker.
+  renderSyncStatus();
+  applyDataGate();
   entries = await loadEntries();
   renderAll();
+  renderSyncStatus();
   // Lengthened from 30s: the heavy compliance/timeline recompute doesn't need
   // to run twice as often as it actually did — the live clock below still
   // ticks every second regardless, so the visible time never looks stale.
@@ -3191,6 +3459,7 @@ auth.onAuthStateChanged(async (user)=>{
   if(user){
     currentUid = user.uid;
     attachEntriesListener(currentUid);
+    document.getElementById('userEmailLabel').textContent = user.email || '';
     document.getElementById('loginScreen').style.display = 'none';
     document.getElementById('appContent').style.display = '';
     if(!appInitialized){
@@ -3201,6 +3470,7 @@ auth.onAuthStateChanged(async (user)=>{
     detachEntriesListener();
     currentUid = null;
     appInitialized = false;
+    document.getElementById('userEmailLabel').textContent = '';
     document.getElementById('loginScreen').style.display = 'flex';
     document.getElementById('appContent').style.display = 'none';
   }
