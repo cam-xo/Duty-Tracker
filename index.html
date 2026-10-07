@@ -674,7 +674,7 @@ const firebaseConfig = {
              calculated (anything that can change a number on screen).
      PATCH — bug fixes and wording that don't change the rules.
    Set here only; the title and header read from it. */
-const APP_VERSION = '0.67.0';
+const APP_VERSION = '0.67.1';
 // Applied immediately rather than in init(), which only runs after sign-in —
 // otherwise the login screen shows a blank version tag.
 document.getElementById('versionTag').textContent = `v${APP_VERSION}`;
@@ -2527,7 +2527,7 @@ function renderDashboard(){
   // relevant to the day in view.
   const displayStandby = mode === 'future'
     ? standbyStartingOnDay(new Date(timelineCenterDate), entries)
-    : dutyCtx.standby;
+    : currentDutyContext(entries).standby;
   if(displayStandby){
     const dur = durationHours(displayStandby);
     html += gaugeHTML('Last Standby (10.2)', dur, 24, 'hrs max', 'Standby period must not exceed 24 continuous hours', dur>24);
@@ -2931,6 +2931,22 @@ function pctOfDay(t, dayStart){
   return Math.min(100, Math.max(0, (t - dayStart.getTime()) / (24*3600000) * 100));
 }
 
+// Which standby the day on screen is about: the one running now, else one that
+// finished today, else (on a past day) the one ending that day. The Last Standby
+// tile needs this. It was removed with the Duty tile in v0.67.0 and restored in
+// v0.67.1 — the tile below still referenced it, and the resulting ReferenceError
+// aborted every dashboard render.
+function currentDutyContext(all){
+  const { mode } = getStatusReference();
+  if(mode === 'future') return { standby:null, mode, dayDate:null };
+  if(mode === 'live'){
+    const { standby } = findTodayStandbyContext(all);
+    return { standby, mode, dayDate: new Date() };
+  }
+  const dayDate = new Date(timelineCenterDate);
+  const { standby } = pastDayStandby(dayDate, all);
+  return { standby, mode, dayDate };
+}
 function buildDayRowHTML(d, allMarkers, useDayNumberLabel){
   const nowReal = new Date();
   const dayStart = new Date(d); dayStart.setHours(0,0,0,0);
