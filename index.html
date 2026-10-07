@@ -30,10 +30,14 @@
     --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
     --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace;
   }
+  /* One place to change how big everything reads. Every font-size in this file
+     is in rem, so this single value scales the whole interface; the browser
+     default is 16px. Raised to 18px in v0.67.0 at the pilot's request. */
+  html{ font-size:18px; }
   *{ box-sizing:border-box; }
   body{
     margin:0; background:var(--bg); color:var(--text);
-    font-family:var(--font-sans); font-size:14px; line-height:1.45;
+    font-family:var(--font-sans); font-size:0.875rem; line-height:1.45;
     padding:0 0 60px 0;
   }
   a{ color:var(--blue); }
@@ -47,26 +51,26 @@
   .topbar-left{ display:flex; align-items:center; gap:14px; }
   .stripe{ width:5px; height:34px; background:var(--amber); border-radius:2px; }
   .brand h1{
-    margin:0; font-size:16px; letter-spacing:0.08em; text-transform:uppercase;
+    margin:0; font-size:1rem; letter-spacing:0.08em; text-transform:uppercase;
     font-weight:700;
   }
   .version-tag{
-    font-weight:400; font-size:11px; letter-spacing:0.02em; text-transform:none;
+    font-weight:400; font-size:0.6875rem; letter-spacing:0.02em; text-transform:none;
     color:var(--muted); margin-left:6px;
   }
-  .brand p{ margin:2px 0 0 0; font-size:11.5px; color:var(--muted); letter-spacing:0.02em; }
+  .brand p{ margin:2px 0 0 0; font-size:0.71875rem; color:var(--muted); letter-spacing:0.02em; }
   .clock{
-    font-family:var(--font-mono); font-size:13px; color:var(--muted);
+    font-family:var(--font-mono); font-size:0.8125rem; color:var(--muted);
     text-align:right;
   }
-  .clock b{ color:var(--text); font-size:15px; }
+  .clock b{ color:var(--text); font-size:0.9375rem; }
 
   .layout{
-    display:grid; grid-template-columns: 340px 1fr; gap:20px;
-    max-width:1280px; margin:22px auto 0 auto; padding:0 24px;
+    display:grid; grid-template-columns: 380px 1fr; gap:20px;
+    max-width:1420px; margin:22px auto 0 auto; padding:0 24px;
     align-items:start;
   }
-  @media (max-width: 880px){
+  @media (max-width: 940px){
     .layout{ grid-template-columns: 1fr; }
   }
 
@@ -76,27 +80,27 @@
   }
   .panel + .panel{ margin-top:20px; }
   .panel h2{
-    margin:0 0 14px 0; font-size:12px; text-transform:uppercase; letter-spacing:0.08em;
+    margin:0 0 14px 0; font-size:0.75rem; text-transform:uppercase; letter-spacing:0.08em;
     color:var(--muted); font-weight:700;
   }
 
   .field{ margin-bottom:12px; }
   .field label{
-    display:block; font-size:11.5px; color:var(--muted); margin-bottom:5px;
+    display:block; font-size:0.71875rem; color:var(--muted); margin-bottom:5px;
     text-transform:uppercase; letter-spacing:0.03em;
   }
   .field input, .field select{
     width:100%; background:var(--panel2); border:1px solid var(--border-light);
-    color:var(--text); padding:8px 10px; border-radius:6px; font-size:13.5px;
+    color:var(--text); padding:8px 10px; border-radius:6px; font-size:0.84375rem;
     font-family:var(--font-sans);
   }
   .field input:focus, .field select:focus{ outline:1px solid var(--amber); }
   .row2{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
-  .hint{ font-size:11px; color:var(--muted2); margin-top:4px; }
+  .hint{ font-size:0.6875rem; color:var(--muted2); margin-top:4px; }
 
   .btn{
     width:100%; padding:10px 12px; border-radius:6px; border:none;
-    background:var(--amber); color:#1a1206; font-weight:700; font-size:13px;
+    background:var(--amber); color:#1a1206; font-weight:700; font-size:0.8125rem;
     letter-spacing:0.02em; cursor:pointer; text-transform:uppercase;
   }
   .btn:hover{ filter:brightness(1.08); }
@@ -106,17 +110,17 @@
   }
 
   .type-tabs{ display:flex; gap:6px; margin-bottom:14px; }
-  .page-switcher-wrap{ max-width:1280px; margin:22px auto 0 auto; padding:0 24px; }
+  .page-switcher-wrap{ max-width:1420px; margin:22px auto 0 auto; padding:0 24px; }
   .page-switcher{ display:flex; gap:10px; }
   .page-tab{
     flex:1; text-align:center; padding:12px; border-radius:8px; border:1px solid var(--border-light);
     color:var(--muted); font-weight:700; cursor:pointer; text-transform:uppercase; letter-spacing:0.05em;
-    background:var(--panel); font-size:13px;
+    background:var(--panel); font-size:0.8125rem;
   }
   .page-tab.active{ background:rgba(242,169,59,0.15); border-color:var(--amber); color:var(--amber); }
   .type-tab{
     flex:1; text-align:center; padding:8px 4px; border-radius:6px; border:1px solid var(--border-light);
-    color:var(--muted); font-size:12px; font-weight:700; cursor:pointer; text-transform:uppercase;
+    color:var(--muted); font-size:0.75rem; font-weight:700; cursor:pointer; text-transform:uppercase;
     letter-spacing:0.03em;
   }
   .type-tab.active[data-type="STANDBY"]{ background:rgba(76,155,232,0.15); border-color:var(--blue); color:var(--blue); }
@@ -138,13 +142,13 @@
   }
   .gauge.flag-over{ border-color:var(--red); }
   .gauge-top{ display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:10px; }
-  .gauge-label{ font-size:11px; text-transform:uppercase; letter-spacing:0.05em; color:var(--muted); font-weight:700; }
+  .gauge-label{ font-size:0.6875rem; text-transform:uppercase; letter-spacing:0.05em; color:var(--muted); font-weight:700; }
   .gauge-flag{
-    font-size:9.5px; font-weight:800; letter-spacing:0.05em; text-transform:uppercase;
+    font-size:0.59375rem; font-weight:800; letter-spacing:0.05em; text-transform:uppercase;
     background:rgba(229,83,75,0.18); color:var(--red); padding:2px 6px; border-radius:4px;
   }
-  .gauge-value{ font-family:var(--font-mono); font-size:22px; font-weight:600; }
-  .gauge-value small{ font-size:12px; color:var(--muted); font-weight:400; }
+  .gauge-value{ font-family:var(--font-mono); font-size:1.375rem; font-weight:600; }
+  .gauge-value small{ font-size:0.75rem; color:var(--muted); font-weight:400; }
   .gauge-track{
     margin-top:10px; height:9px; border-radius:5px; background:var(--panel2);
     border:1px solid var(--border-light); position:relative; overflow:hidden;
@@ -158,14 +162,14 @@
   .zone-amber{ background:var(--amber); }
   .zone-red{ background:var(--red); }
   .zone-pending{ background:var(--muted2); }
-  .gauge-sub{ margin-top:8px; font-size:11px; color:var(--muted2); }
+  .gauge-sub{ margin-top:8px; font-size:0.6875rem; color:var(--muted2); }
 
-  table{ width:100%; border-collapse:collapse; margin-top:6px; font-size:12.5px; }
+  table{ width:100%; border-collapse:collapse; margin-top:6px; font-size:0.78125rem; }
   th, td{ text-align:left; padding:8px 8px; border-bottom:1px solid var(--border); }
-  th{ color:var(--muted); font-weight:700; text-transform:uppercase; font-size:10.5px; letter-spacing:0.04em; }
+  th{ color:var(--muted); font-weight:700; text-transform:uppercase; font-size:0.65625rem; letter-spacing:0.04em; }
   tr:hover td{ background:rgba(255,255,255,0.02); }
   .badge{
-    display:inline-block; font-size:10px; font-weight:700; padding:2px 6px; border-radius:4px;
+    display:inline-block; font-size:0.625rem; font-weight:700; padding:2px 6px; border-radius:4px;
     margin-right:4px; text-transform:uppercase; letter-spacing:0.03em;
   }
   .badge-lno{ background:rgba(76,155,232,0.18); color:var(--blue); }
@@ -177,9 +181,67 @@
   .badge-open-stale{ background:rgba(229,83,75,0.22); color:var(--red); }
   .status-ok{ color:var(--green); font-weight:700; }
   .status-over{ color:var(--red); font-weight:700; }
+  /* I7 — the explanation panel. Conflict and rest reasons used to live only in
+     hover tooltips, which a phone or iPad can never show. */
+  .tip-sheet{
+    position:fixed; left:0; right:0; bottom:0; display:none; z-index:60;
+    background:var(--panel); border-top:1px solid var(--border-light);
+    box-shadow:0 -8px 24px rgba(0,0,0,0.45); padding:16px 18px 20px;
+    max-height:60vh; overflow-y:auto;
+  }
+  .tip-sheet.show{ display:block; }
+  .tip-sheet-head{
+    display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:10px;
+  }
+  .tip-sheet-title{
+    font-size:0.6875rem; text-transform:uppercase; letter-spacing:0.05em;
+    color:var(--muted); font-weight:700;
+  }
+  .tip-sheet-close{
+    background:transparent; border:1px solid var(--border-light); color:var(--muted);
+    border-radius:6px; padding:4px 10px; font-size:0.75rem; cursor:pointer; font-family:inherit;
+  }
+  .tip-sheet ul{ margin:0; padding:0; list-style:none; }
+  .tip-sheet li{
+    font-size:0.8125rem; line-height:1.5; color:var(--text);
+    padding:8px 0; border-top:1px solid var(--border);
+  }
+  .tip-sheet li:first-child{ border-top:none; }
+  .tip-sheet li b{ color:var(--muted); font-weight:700; }
+  .tip-chip{
+    display:inline-flex; align-items:center; gap:5px; margin-left:8px;
+    background:transparent; border:1px solid var(--border-light); color:var(--muted);
+    border-radius:999px; padding:1px 9px; font-size:0.625rem; font-weight:700;
+    letter-spacing:0.04em; cursor:pointer; font-family:inherit; vertical-align:middle;
+  }
+  .tip-chip:hover{ border-color:var(--blue); color:var(--blue); }
+  .tip-chip.has-conflict{ border-color:var(--red); color:var(--red); }
+  /* Touch targets: a band only minutes long is a hairline on a phone. */
+  .timeline-band[data-tip], .timeline-marker[data-tip]{ cursor:pointer; }
+  @media (hover: none){
+    .timeline-band[data-tip]{ min-width:3px; }
+    .timeline-marker[data-tip]{ width:5px; }
+  }
+  [data-tip]{ cursor:pointer; }
+
+  /* B9 — undo bar for a deleted Duty Log row. */
+  .undo-toast{
+    position:fixed; left:50%; bottom:24px; transform:translateX(-50%);
+    display:none; align-items:center; gap:14px; z-index:50;
+    background:var(--panel); border:1px solid var(--border-light); border-radius:10px;
+    padding:12px 16px; box-shadow:0 8px 24px rgba(0,0,0,0.45);
+    font-size:0.8125rem; color:var(--text); max-width:calc(100vw - 32px);
+  }
+  .undo-toast.show{ display:flex; }
+  .undo-toast button{
+    background:transparent; border:1px solid var(--blue); color:var(--blue);
+    border-radius:6px; padding:5px 12px; font-size:0.75rem; font-weight:700;
+    cursor:pointer; font-family:inherit; white-space:nowrap;
+  }
+  .undo-toast button:hover{ background:rgba(76,155,232,0.12); }
   .del-btn{
     background:none; border:1px solid var(--border-light); color:var(--muted);
-    border-radius:5px; padding:3px 8px; cursor:pointer; font-size:11px;
+    border-radius:5px; padding:3px 8px; cursor:pointer; font-size:0.6875rem;
   }
   .del-btn:hover{ color:var(--red); border-color:var(--red); }
   .empty-row td{ color:var(--muted2); text-align:center; padding:22px 0; }
@@ -189,21 +251,21 @@
   .row-group-bottom td{ border-bottom:2px solid var(--tl-standby); }
 
   .note{
-    font-size:11.5px; color:var(--muted2); border-top:1px solid var(--border); margin-top:16px; padding-top:12px;
+    font-size:0.71875rem; color:var(--muted2); border-top:1px solid var(--border); margin-top:16px; padding-top:12px;
   }
-  .note summary{ cursor:pointer; color:var(--muted); font-weight:700; text-transform:uppercase; font-size:10.5px; letter-spacing:0.04em; }
+  .note summary{ cursor:pointer; color:var(--muted); font-weight:700; text-transform:uppercase; font-size:0.65625rem; letter-spacing:0.04em; }
   .note ul{ margin:8px 0 0 18px; padding:0; }
   .note li{ margin-bottom:5px; }
 
   .section-title{
-    font-size:12px; text-transform:uppercase; letter-spacing:0.08em; color:var(--muted);
+    font-size:0.75rem; text-transform:uppercase; letter-spacing:0.08em; color:var(--muted);
     font-weight:700; margin:26px 0 10px 0;
   }
 
   .timeline-row{ margin-bottom:26px; }
   .timeline-row:last-child{ margin-bottom:0; }
   .timeline-row-label{
-    font-size:11px; text-transform:uppercase; letter-spacing:0.05em; color:var(--muted);
+    font-size:0.6875rem; text-transform:uppercase; letter-spacing:0.05em; color:var(--muted);
     font-weight:700; margin-bottom:8px; display:flex; justify-content:space-between;
   }
   .timeline-row-label .tl-date{ color:var(--muted2); font-weight:400; text-transform:none; font-family:var(--font-mono); }
@@ -222,6 +284,11 @@
     position:absolute; height:13px; border-radius:3px; transform:translateY(-50%);
   }
   .timeline-band.above{ top:calc(50% - 12px); }
+  .timeline-band.hatched{
+    background-image:repeating-linear-gradient(135deg,
+      var(--tl-nfd) 0, var(--tl-nfd) 5px,
+      var(--tl-fdp) 5px, var(--tl-fdp) 10px);
+  }
   .timeline-band.below{ top:calc(50% + 12px); }
   .timeline-band.above.kssrest{ top:calc(50% - 26px); height:9px; }
   .timeline-band.above.kssconflict{
@@ -242,12 +309,12 @@
     position:absolute; top:-6px; bottom:-6px; width:2px; z-index:2;
   }
   .timeline-ticks-labels{
-    display:flex; justify-content:space-between; font-size:9px; color:var(--muted2);
+    display:flex; justify-content:space-between; font-size:0.5625rem; color:var(--muted2);
     margin-top:4px; font-family:var(--font-mono);
   }
   .timeline-legend{
     display:flex; flex-wrap:wrap; gap:16px; margin-top:16px; padding-top:12px;
-    border-top:1px solid var(--border); font-size:11.5px; color:var(--muted);
+    border-top:1px solid var(--border); font-size:0.71875rem; color:var(--muted);
   }
   .timeline-legend i{
     display:inline-block; width:10px; height:10px; border-radius:2px; margin-right:5px; vertical-align:middle;
@@ -265,8 +332,8 @@
     <div style="display:flex; align-items:center; gap:12px; margin-bottom:20px;">
       <div class="stripe"></div>
       <div>
-        <h1 style="margin:0; font-size:16px; letter-spacing:0.08em; text-transform:uppercase; font-weight:700;">Duty &amp; Fatigue Tracker</h1>
-        <p style="margin:2px 0 0 0; font-size:11px; color:var(--muted);">Sign in to sync your data across devices</p>
+        <h1 style="margin:0; font-size:1rem; letter-spacing:0.08em; text-transform:uppercase; font-weight:700;">Duty &amp; Fatigue Tracker</h1>
+        <p style="margin:2px 0 0 0; font-size:0.6875rem; color:var(--muted);">Sign in to sync your data across devices</p>
       </div>
     </div>
     <div class="field">
@@ -277,12 +344,26 @@
       <label>Password</label>
       <input type="password" id="auth-password" autocomplete="current-password" />
     </div>
-    <div id="authError" style="display:none; color:var(--red); font-size:12px; margin-bottom:10px;"></div>
-    <div id="authInfo" style="display:none; color:var(--green); font-size:12px; margin-bottom:10px;"></div>
+    <div id="authError" style="display:none; color:var(--red); font-size:0.75rem; margin-bottom:10px;"></div>
+    <div id="authInfo" style="display:none; color:var(--green); font-size:0.75rem; margin-bottom:10px;"></div>
     <button class="btn" id="authLoginBtn" style="margin-bottom:8px;">Sign In</button>
     <button class="btn btn-ghost" id="authResetBtn">Forgot Password?</button>
     <div class="hint" style="margin-top:14px; text-align:center;">Accounts are added by the tracker owner — contact them if you need access. Use the same email/password on every device to keep your data in sync.</div>
   </div>
+</div>
+
+<div class="tip-sheet" id="tipSheet">
+  <div class="tip-sheet-head">
+    <span class="tip-sheet-title" id="tipSheetTitle"></span>
+    <button type="button" class="tip-sheet-close" id="tipSheetClose">Close</button>
+  </div>
+  <ul id="tipSheetBody"></ul>
+</div>
+
+<div class="undo-toast" id="undoToast">
+  <span id="undoToastText"></span>
+  <button type="button" id="undoDeleteBtn">Undo</button>
+  <button type="button" id="undoDismissBtn" style="border-color:var(--border-light); color:var(--muted);">Dismiss</button>
 </div>
 
 <!-- MAIN APP (hidden until signed in) -->
@@ -306,7 +387,7 @@
       <b id="syncStatus">Loading…</b>
     </div>
     <div style="display:flex; flex-direction:column; align-items:flex-end; gap:6px;">
-      <span id="userEmailLabel" style="font-size:12px; color:var(--muted);"></span>
+      <span id="userEmailLabel" style="font-size:0.75rem; color:var(--muted);"></span>
       <button class="btn-ghost" id="signOutBtn" style="width:auto; padding:8px 14px;" title="Sign out">Sign Out</button>
     </div>
   </div>
@@ -356,6 +437,15 @@
 
       <!-- Standby-only quick fill -->
       <div id="standbyFields" class="conditional show">
+        <div class="field">
+          <label>Shift type</label>
+          <select id="f-shiftType">
+            <option value="">Not specified</option>
+            <option value="day">Day Shift</option>
+            <option value="night">Night Shift</option>
+          </select>
+        </div>
+        <div class="hint" style="margin-top:-6px; margin-bottom:12px;">A Day Shift caps an FDP at 2200 without Duty Officer approval (10.6). Set this explicitly &mdash; up to v0.65.0 it was read from whether the Notes text happened to contain the words "Day Shift".</div>
         <div class="row2" style="margin-bottom:8px;">
           <button type="button" class="btn btn-ghost" id="dayShiftBtn" style="width:100%;">Day Shift (08:00–18:00)</button>
           <button type="button" class="btn btn-ghost" id="nightShiftBtn" style="width:100%;">Night Shift (18:00–08:00)</button>
@@ -433,7 +523,7 @@
         <input type="text" id="f-notes" placeholder="e.g. tasked to MTO, base XYZ" />
       </div>
 
-      <div id="editingBanner" style="display:none; background:rgba(242,169,59,0.12); border:1px solid var(--amber); color:var(--amber); border-radius:6px; padding:8px 10px; font-size:12px; margin-bottom:10px;">
+      <div id="editingBanner" style="display:none; background:rgba(242,169,59,0.12); border:1px solid var(--amber); color:var(--amber); border-radius:6px; padding:8px 10px; font-size:0.75rem; margin-bottom:10px;">
         Editing existing entry
       </div>
       <div style="display:flex; gap:8px;">
@@ -450,7 +540,7 @@
         <h2 style="margin:0;">Time Line</h2>
         <div style="display:flex; align-items:center; gap:10px;">
           <button id="tlPrev" class="btn btn-ghost" style="width:auto; padding:6px 12px;" title="Move back a day">&larr; Prev Day</button>
-          <input type="date" id="tlDatePicker" style="background:var(--panel2); border:1px solid var(--border-light); color:var(--text); padding:6px 10px; border-radius:6px; font-family:var(--font-mono); font-size:11px;" />
+          <input type="date" id="tlDatePicker" style="background:var(--panel2); border:1px solid var(--border-light); color:var(--text); padding:6px 10px; border-radius:6px; font-family:var(--font-mono); font-size:0.6875rem;" />
           <button id="tlNext" class="btn btn-ghost" style="width:auto; padding:6px 12px;" title="Move forward a day">Next Day &rarr;</button>
           <button id="tlToday" class="btn btn-ghost" style="width:auto; padding:6px 12px;" title="Jump back to today">Today</button>
         </div>
@@ -484,7 +574,7 @@
           <input type="file" id="importFile" accept="application/json" style="display:none;" />
         </div>
       </div>
-      <div style="font-size:11px; color:var(--muted2); margin-bottom:10px;">Showing the 3 days displayed on the Time Line above. See <b>Calendar View</b> for a full month.</div>
+      <div style="font-size:0.6875rem; color:var(--muted2); margin-bottom:10px;">Showing the 3 days displayed on the Time Line above. See <b>Calendar View</b> for a full month.</div>
       <table>
         <thead>
           <tr>
@@ -508,14 +598,14 @@
         <li>Late Night Operations are counted once per local night regardless of how many FDPs occurred, per the note under 10.13.</li>
         <li>Cumulative duty windows clip entries to the window boundary and merge overlapping entries, so a duty straddling the 7- or 14-day cutoff counts only for the portion inside it.</li>
         <li>The Time Line's "required rest" band only follows a rostered Standby period, anchored at the later of the standby's own end or the end of any NFD/FDP that started during it (Table 10 base &mdash; 8h where the rest starts 0600&ndash;2259, 10h where it starts 2300&ndash;0559, per ruling R2 &mdash; plus extra for an FDP running over 12 hrs, using an extension, or an increased FDP's 12-hour floor). Shortfalls show as a red hatched "rest conflict" band. Standalone FDPs with no enclosing standby don't get a rest band on the Time Line.</li>
-        <li><b>Flight Time (Shift)</b> sums flight time across every FDP overlapping the relevant standby period (today's ongoing or most recently finished one; on a past day, whichever standby's end falls on that date), or the calendar day's FDPs if no standby applies — same day-resolution rules as LIVE/CURRENT/PAST FDP. The 10h/12h shown as its "max" is the per-FDP flight time limit (10.6) shown purely as a visual size reference — there's no actual regulatory cap on total flight time per shift, so this tile can legitimately show "over" without that meaning any rule was broken.</li>
+        <li><b>Flight Time (10.6)</b> sums the flight time of every task in the FDP the tile above is reporting on, against the real per-FDP limit — 10 hrs single pilot, 12 hrs multi-crew. It replaced the separate "last FDP" and "Shift" tiles in v0.64.0: under the FDP model every task in a shift belongs to one FDP, so both were measuring the same hours, and the per-shift one was labelled a reference figure only because it predated the model. Going over this limit is a real breach of 10.6, not a visual reference. Finished tasks with no flight time recorded are flagged in the tile, since they silently understate the total.</li>
         <li>The rest owed after an FDP (10.12.3) is worked out across the <b>whole FDP</b>, not the last task in it, and only <b>50%</b> of any split-duty rest inside the FDP counts towards the over-12h component, per 10.12.3. Where the duty being assessed is a standby, the requirement is taken from the FDPs flown inside it, so an increased FDP's 12-hour floor and any extension add-on are applied rather than the Table 10 base alone (findings C5 and C8).</li>
         <li>Whether duty has stopped &mdash; and so whether rest has started &mdash; is decided by how long the gap is, not by the calendar date. Duty keeps running while the free gap is shorter than 8 hrs (the shortest possible minimum ODP), so dead-head travel an hour after landing is the same duty period, duty continuing past midnight still counts as one, and two genuinely separate duties on the same date are treated as two (finding C6).</li>
         <li>A rest requirement can only be satisfied by a break that has actually happened. A break rostered but not yet taken never counts, and a break still in progress counts for the hours elapsed so far &mdash; which is what lets Preceding Rest read "Satisfied" during a long stretch off with nothing rostered after it (findings C3 and C11). Gaps are also measured around merged duty, so an FDP logged inside a standby cannot create a gap that was never free.</li>
         <li>The Off-Duty Period tile in Live Status checks the rest taken <b>before</b> the most recent FDP or standby as of the day being viewed (not just standby periods, unlike the Time Line's per-standby view) — the two are worth reading together rather than expecting them to always agree. It only ever looks at the gap immediately preceding what's most recent for the selected day; it does not surface older unresolved shortfalls from further back in your history.</li>
         <li><b>Preceding Rest (10.12.2)</b> checks whether at least one qualifying off-duty period occurred somewhere in the trailing 14 days (36h including 2 local nights, Table 9) or, failing that, the trailing 21 days (72h including 3 local nights). Live mode checks as if you were starting a new duty right now. Historic and Future modes both check against whatever duty <b>starts</b> on the displayed day — a standby if one exists, otherwise the earliest FDP (e.g. a training/sim day logged without a standby) — if neither has been entered for that day, the check simply doesn't run, since there's nothing to anchor it to.</li>
         <li><b>Cumulative Fatigue Recovery (10.12.1)</b> follows ruling R7, which reads 10.9/10.12.1 as two separate protections. Exactly <b>3</b> late night operations in the trailing 7 days owes no recovery break — the protection at that level is the 7-day cumulative duty cap dropping to 40 hrs, applied by the Cumulative Duty (7d) gauge. <b>More than 3</b> requires 36 hrs off duty over 2 local nights, and that break must fall <b>after the 4th LNO</b>, before any further duty. An increased FDP in the window triggers the same break (R11), which must then follow the increased FDP; where both apply the break must follow whichever came later. A qualifying break earlier in the same 7 days no longer counts.</li>
-        <li>The Duty tile's maximum is a local convention, not a rule from the manual: Table 6 is defined against FDP start time, and this applies it to the standby start time instead. Treat it as a rough reference only.</li>
+        <li>The <b>Duty</b> tile was removed in v0.67.0. Its maximum was a local convention rather than a rule &mdash; Table 6 is defined against FDP start time and the tile applied it to the standby start &mdash; which made it the one gauge on the dashboard measured against a number OMY does not set. Cumulative duty against the real 10.14 limits is still shown, and hours per shift are in the Duty Log.</li>
         <li>A KSS score of 7 recorded at either the start or end of an FDP adds a mandatory 3-hour rest (10.5) shown above the line on the Time Line, immediately after that task. Any NFD or FDP starting during that window is flagged as a conflict, same as the other rest-conflict bands.</li>
         <li>The reduction of a calculated off-duty period to 12 hours (10.12.3) is not modelled.</li>
         <li>The orange marker line on today's Time Line shows the max FDP end time for the FDP a tasking right now would fall into — which continues the current FDP if no off-duty period has been taken since its last task, or starts a fresh one if it has. The red line is simply the current time. Yellow extension-limit lines only appear when an actual open FDP has an extension type selected on it — they're not shown as a generic "what's available" hint.</li>
@@ -526,8 +616,13 @@
         <li>Saving checks for entries added by another device since this one last loaded and preserves them, rather than blindly overwriting — protects against losing data if you're using this on two devices close together. It can't resolve two devices editing the exact same entry at the same moment (last save wins for that entry) — full conflict resolution would need real-time listeners.</li>
         <li>Import Backup now also catches duplicates by matching type/date/start/end time, not just by ID — so re-importing the same duty under a freshly generated ID (e.g. from a different export) won't create a second copy.</li>
         <li>The Duty Log's Status column reads the whole FDP, not the row's own task: every task in one FDP shows the same figure (e.g. <code>OK (9.5/12.0h)</code>), and hovering it gives the reason for the limit &mdash; the 2200 Day Shift cap, the 16h ceiling, the 10.8.1 remaining-portion cap or an NFD reduction. The 2200 cap now applies to finished FDPs as well as in-progress ones (findings C9 and I10).</li>
+        <li>Text size is set in one place: every font size in the file is in <code>rem</code> and scales from a single root value (18px as of v0.67.0, up from the browser default of 16). Changing that one number resizes the whole interface.</li>
+        <li><b>On a phone or iPad</b>, every explanation that used to be hover-only is now tappable. Each Time Line row carries an &#9432; chip showing how many bands and markers it has (and how many are conflicts); tapping it lists them all in a sheet at the bottom of the screen. Tapping a band, a marker or a Duty Log status shows that one on its own. Hover tooltips still work on a desktop. This matters because a rest conflict only minutes long is a hairline on a phone &mdash; the chip is the reliable way to read it.</li>
+        <li>Deleting a Duty Log row asks for confirmation, naming the entry, and then offers <b>Undo</b> for 20 seconds. The undo is one level deep &mdash; the last delete only &mdash; because a longer history could not honestly survive changes made on another device.</li>
+        <li>An imported backup is rebuilt field by field against a known shape. Anything that cannot be read &mdash; an unknown type, a date that does not exist, a time that is not a valid 24-hour time, an end time equal to the start &mdash; is listed for you and skipped rather than stored, since an invalid date silently corrupts every rolling window and limit downstream. Unrecognised fields are dropped, and notes are capped at 500 characters. Text from entries is escaped before it reaches the page, so a backup file cannot run script in your signed-in session.</li>
         <li><b>Add Shift Block</b> on the Standby form writes four standby periods straight to the log, starting on the date selected: Day Shift, Day Shift, Night Shift, Night Shift on consecutive days. It warns first if any of those dates already has a standby, shows what it is about to add, and then moves the form date to the day after the block so a second block follows on.</li>
-        <li>Per 10.6, an FDP within a Day Shift standby (detected from the standby's notes containing "Day Shift") has its end capped at 2200 — the FDP tile, "Must land by" banner and orange marker line all reflect this. Select the <b>Day Shift past 22:00</b> extension option once Duty Officer/Chief Pilot approval is given to lift the cap back to the normal calculated limit, shown as a yellow marker line.</li>
+        <li><b>Shift type</b> is an explicit field on a standby entry (Day Shift / Night Shift / Not specified), set by the quick-fill buttons and the Shift Block. Up to v0.65.0 a Day Shift was detected from whether the free-text Notes happened to contain the words "Day Shift", so renaming a note could silently change a limit. Standbys saved before v0.66.0 have no field, and for those the old notes test still applies as a fallback &mdash; opening such an entry and saving it moves it onto the real field. An explicit Night Shift always wins over notes mentioning a day shift.</li>
+        <li>Per 10.6, an FDP within a Day Shift standby has its end capped at 2200 — the FDP tile, "Must land by" banner and orange marker line all reflect this. Select the <b>Day Shift past 22:00</b> extension option once Duty Officer/Chief Pilot approval is given to lift the cap back to the normal calculated limit, shown as a yellow marker line.</li>
         <li>This is a personal support tool. Air Maestro remains your company's official record per the FMS manual — always log there too.</li>
         <li>Data is stored privately to your own account in Firebase — not shared with anyone else.</li>
         <li>Use <b>Export Backup</b> periodically to save your entries to a file, and <b>Import Backup</b> to restore them — this protects you if data ever fails to carry over when this tool is updated.</li>
@@ -538,11 +633,11 @@
 </div>
 </div>
 
-<div id="pageCalendar" style="display:none; max-width:1280px; margin:22px auto 0 auto; padding:0 24px 40px 24px;">
+<div id="pageCalendar" style="display:none; max-width:1420px; margin:22px auto 0 auto; padding:0 24px 40px 24px;">
   <div class="panel">
     <div style="display:flex; justify-content:center; align-items:center; gap:14px; margin-bottom:16px; flex-wrap:wrap;">
       <button id="calPrevMonth" class="btn btn-ghost" style="width:auto; padding:6px 14px;">&larr; Prev Month</button>
-      <input type="month" id="calMonthPicker" style="background:var(--panel2); border:1px solid var(--border-light); color:var(--text); padding:8px 10px; border-radius:6px; font-family:var(--font-mono); font-size:13px;" />
+      <input type="month" id="calMonthPicker" style="background:var(--panel2); border:1px solid var(--border-light); color:var(--text); padding:8px 10px; border-radius:6px; font-family:var(--font-mono); font-size:0.8125rem;" />
       <button id="calNextMonth" class="btn btn-ghost" style="width:auto; padding:6px 14px;">Next Month &rarr;</button>
     </div>
     <div style="display:flex; justify-content:center; gap:10px;">
@@ -579,7 +674,7 @@ const firebaseConfig = {
              calculated (anything that can change a number on screen).
      PATCH — bug fixes and wording that don't change the rules.
    Set here only; the title and header read from it. */
-const APP_VERSION = '0.63.0';
+const APP_VERSION = '0.67.0';
 // Applied immediately rather than in init(), which only runs after sign-in —
 // otherwise the login screen shows a blank version tag.
 document.getElementById('versionTag').textContent = `v${APP_VERSION}`;
@@ -853,6 +948,16 @@ function fmtMarkerTime(when, ref){
 function fmtDateTimeShort(when){
   return `${when.toLocaleDateString([], {weekday:'short', day:'2-digit', month:'short'})} ${when.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', hour12:false})}`;
 }
+// B4 — every value that came from a person or an imported file is escaped
+// before it reaches innerHTML. Notes and the raw time/type fields were
+// interpolated as HTML, so a backup file carrying markup in a notes field could
+// run script in the signed-in session, with the Firestore credentials in it.
+function esc(v){
+  if(v === null || v === undefined) return '';
+  return String(v)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
 function fmtHrs(h){
   if(h === null || h === undefined || isNaN(h)) return '—';
   return h.toFixed(1);
@@ -928,6 +1033,44 @@ function getStandbys(all){
   _standbysCache = result;
   return result;
 }
+// I8 — the four remaining direct callers of effectiveStandbyWindow each redid
+// the fixed-point expansion from scratch; getStandbys() has already done it once
+// per render, so look the answer up instead.
+function standbyWindowFor(standby, all){
+  if(!standby) return null;
+  const hit = getStandbys(all).find(s => String(s.id) === String(standby.id));
+  return hit ? { start: hit.start, end: hit.end } : effectiveStandbyWindow(standby, all);
+}
+// I8 — per-render caches for the two most expensive things the timeline asked
+// for once per DAY ROW. The Calendar draws 31 rows, so mandatoryRestBands() —
+// which walks every FDP and computes its rest requirement — ran 31 times for an
+// identical answer, and standbyRestStatus() ran 31 times per standby. Keyed on
+// the entries array identity, like getStandbys above: every mutation site
+// reassigns `entries` rather than mutating it, so the same reference means the
+// same content.
+let _bandCacheKey = null, _bandCache = null;
+function bandCacheFor(all){
+  if(_bandCacheKey !== all){
+    _bandCacheKey = all;
+    _bandCache = { restBands:null, standbyRest:new Map() };
+  }
+  return _bandCache;
+}
+// Each entry is { rb, conflict } — the conflict lookup is as expensive as the
+// band itself and was also being redone per row.
+function mandatoryRestBandsFor(all){
+  const c = bandCacheFor(all);
+  if(!c.restBands){
+    c.restBands = mandatoryRestBands(all).map(rb => ({ rb, conflict: mandatoryRestConflict(rb, all) }));
+  }
+  return c.restBands;
+}
+function standbyRestStatusFor(standby, all){
+  const c = bandCacheFor(all);
+  const k = String(standby.id);
+  if(!c.standbyRest.has(k)) c.standbyRest.set(k, standbyRestStatus(standby, all));
+  return c.standbyRest.get(k);
+}
 function standbyContaining(entryStart, standbys){
   return standbys.find(s => entryStart.getTime() >= s.start.getTime() && entryStart.getTime() <= s.end.getTime()) || null;
 }
@@ -984,18 +1127,32 @@ function autoSplitRestHours(entry, all){
 }
 
 // 10.6: an FCM shall not exceed a Day Shift past 22:00 without prior Duty
-// Officer/Chief Pilot approval. Detected by the enclosing standby's notes
-// (matches the "Day Shift" label the quick-fill button and imports use).
+// Officer/Chief Pilot approval. Which standby encloses the task is decided here;
+// whether that standby is a Day Shift is standbyShiftType()'s job, below.
 function findEnclosingStandbyEntry(entry, all){
   const {start} = entryDates(entry);
   return all.find(e => {
     if(e.type !== 'STANDBY') return false;
-    const {start: ss, end: se} = effectiveStandbyWindow(e, all);
+    const {start: ss, end: se} = standbyWindowFor(e, all);
     return start.getTime() >= ss.getTime() && start.getTime() <= se.getTime();
   }) || null;
 }
+// I6 — the 10.6 2200 cap used to hinge on whether the free-text Notes field
+// happened to contain the words "day shift": renaming a note or typing "not a
+// day shift" silently changed a limit. It is now an explicit field. Entries
+// saved before v0.66.0 have no field, so for those the old notes test still
+// applies — it is a fallback for legacy data, never for a new entry, which is
+// why an explicit 'night' wins over notes that mention a day shift.
+function standbyShiftType(standbyEntry){
+  if(!standbyEntry || standbyEntry.type !== 'STANDBY') return '';
+  if(standbyEntry.shiftType === 'day' || standbyEntry.shiftType === 'night') return standbyEntry.shiftType;
+  const notes = (standbyEntry.notes||'').toLowerCase();
+  if(notes.includes('day shift')) return 'day';
+  if(notes.includes('night shift')) return 'night';
+  return '';
+}
 function isDayShiftStandby(standbyEntry){
-  return !!(standbyEntry && (standbyEntry.notes||'').toLowerCase().includes('day shift'));
+  return standbyShiftType(standbyEntry) === 'day';
 }
 
 /* ---------------- Max FDP computation ---------------- */
@@ -1573,29 +1730,8 @@ function prGapText(pr){
   if(pr.open) return `${pr.gapHours.toFixed(0)}h so far and still running`;
   return `ended ${pr.gapEnd.toLocaleDateString([], {day:'2-digit', month:'short'})}`;
 }
-// Sum of FDP + NFD duration for entries whose start falls within a given
-// standby period. Overlapping tasks are merged before summing (a new task
-// tasked within the 30-min post-landing tail of the previous one will
-// overlap by design — treated consistently with the LIVE FDP tile, not
-// double-counted).
-function dutyPeriodHours(all, standbyEntry){
-  if(!standbyEntry) return 0;
-  const {start, end} = effectiveStandbyWindow(standbyEntry, all);
-  const ivs = [];
-  for(const e of all){
-    if(e.type!=='FDP' && e.type!=='NFD') continue;
-    const {start: es, end: ee} = entryDates(e);
-    if(es.getTime() >= start.getTime() && es.getTime() <= end.getTime()) ivs.push({start:es.getTime(), end:ee.getTime()});
-  }
-  return mergeIntervals(ivs).reduce((acc,iv)=> acc + (iv.end-iv.start)/3600000, 0);
-}
 
 /* ---------------- Required off-duty period (Tables 10 / 11) ---------------- */
-// Per-FDP flight time limit (10.6): 10 hrs single pilot, 12 hrs multi-crew.
-function flightTimeLimitFor(entry){
-  return (entry && entry.pilotType === 'multi') ? 12 : 10;
-}
-
 // Minimum ODP owed after completing an FDP or a Standby period.
 // Base from Table 10 by where the REST falls, not by completion time (rest
 // starting 0600-2259 -> 8h, rest starting 2300-0559 -> 10h; ruling R2),
@@ -1680,19 +1816,25 @@ function odpStatus(entry, all, effectiveEnd){
   const required = requiredODPHours(entry, all, end);
   if(required <= 0) return null;
   const restEnd = end.getTime() + required*3600000;
-  // Find the next Standby/FDP/NFD that begins after this entry ends.
-  let next = null;
+  // The next duty that eats into the rest. B10 — this only looked for a duty
+  // starting at or AFTER the rest began, so a duty that started before the
+  // previous one finished was skipped entirely and the tile reported "no next
+  // duty", i.e. rest met, when in fact no rest was taken at all. Any duty that
+  // ends after the rest starts now counts, and its overlap is measured as
+  // negative rest so the shortfall is the real one.
+  const startMs = entryDates(entry).start.getTime();
+  let next = null, nextAt = null;
   for(const e of all){
-    if(e.id === entry.id) continue;
+    if(String(e.id) === String(entry.id)) continue;
     if(!['STANDBY','FDP','NFD'].includes(e.type)) continue;
-    const {start: es} = entryDates(e);
-    if(es.getTime() >= end.getTime()){
-      if(!next || es.getTime() < entryDates(next).start.getTime()) next = e;
-    }
+    const d = entryDates(e);
+    if(d.end.getTime() <= end.getTime()) continue;   // finished before rest began
+    if(d.start.getTime() <= startMs) continue;       // began before this duty: not a "next"
+    const at = d.start.getTime();
+    if(nextAt === null || at < nextAt){ next = e; nextAt = at; }
   }
   if(!next) return { required, actual:null, conflictWith:null, restEnd };
-  const nextStart = entryDates(next).start.getTime();
-  const actual = (nextStart - end.getTime())/3600000;
+  const actual = (nextAt - end.getTime())/3600000;   // negative when it overlaps
   return { required, actual, conflictWith: actual < required ? next : null, restEnd };
 }
 
@@ -1825,12 +1967,14 @@ function standbyRestStatus(standbyEntry, all){
   const restEnd = new Date(latestEnd.getTime() + hours*3600000);
   let next = null;
   for(const e of all){
-    if(e.id === standbyEntry.id) continue;
+    if(String(e.id) === String(standbyEntry.id)) continue;
     if(!['STANDBY','FDP','NFD'].includes(e.type)) continue;
-    const {start: es} = entryDates(e);
-    if(es.getTime() >= latestEnd.getTime()){
-      if(!next || es.getTime() < entryDates(next).start.getTime()) next = e;
-    }
+    const d = entryDates(e);
+    // B10, as in odpStatus: a duty overlapping the standby's effective end was
+    // skipped, so the band showed no conflict where there was no rest at all.
+    if(d.end.getTime() <= latestEnd.getTime()) continue;
+    if(d.start.getTime() <= entryDates(standbyEntry).start.getTime()) continue;
+    if(!next || d.start.getTime() < entryDates(next).start.getTime()) next = e;
   }
   const actual = next ? (entryDates(next).start.getTime() - latestEnd.getTime())/3600000 : null;
   return {
@@ -1841,7 +1985,10 @@ function standbyRestStatus(standbyEntry, all){
 }
 
 /* ---------------- Rendering ---------------- */
-function pct(value, max){ return max<=0 ? 0 : Math.min(100, (value/max)*100); }
+// Clamped at both ends: a rest period can now come out negative when the next
+// duty overlaps the previous one (B10), and a negative bar width renders as
+// nothing useful.
+function pct(value, max){ return max<=0 ? 0 : Math.max(0, Math.min(100, (value/max)*100)); }
 function zoneClass(p){ return p>=100 ? 'zone-red' : (p>=80 ? 'zone-amber' : 'zone-green'); }
 
 function gaugeHTML(label, value, max, unit, sub, overFlag){
@@ -1897,7 +2044,7 @@ function statusGaugeHTML(label, state, valueText, sub){
         <div class="gauge-label">${label}</div>
         ${flagHTML}
       </div>
-      <div class="gauge-value" style="font-size:18px; ${textColor}">${valueText}</div>
+      <div class="gauge-value" style="font-size:1.125rem; ${textColor}">${valueText}</div>
       <div class="gauge-track"><div class="gauge-fill ${zone}" style="width:100%"></div></div>
       <div class="gauge-sub">${sub}</div>
     </div>`;
@@ -1969,26 +2116,26 @@ function openTaskBannerHTML(openEntry, all){
   }
   adj.push(`FDP max end ${fdpMaxEndStr} (incl. 30 min post-landing)`);
   const staleWarning = stale
-    ? `<div style="font-size:12px; color:var(--red); font-weight:700; margin-top:8px;">⚠ This task has been open for ${fmtHrs(entryElapsed)}h — check it wasn't left open by mistake and close it out if it's actually finished.</div>`
+    ? `<div style="font-size:0.75rem; color:var(--red); font-weight:700; margin-top:8px;">⚠ This task has been open for ${fmtHrs(entryElapsed)}h — check it wasn't left open by mistake and close it out if it's actually finished.</div>`
     : '';
   return `
     <div style="border:1px solid var(--border-light); border-left:4px solid ${color}; border-radius:10px; padding:16px 18px; margin-bottom:16px; background:var(--panel2);">
       <div style="display:flex; justify-content:space-between; align-items:baseline; flex-wrap:wrap; gap:8px;">
-        <div style="font-size:12px; text-transform:uppercase; letter-spacing:0.05em; color:${color}; font-weight:700;">Open FDP In Progress</div>
-        <div style="font-family:var(--font-mono); font-size:12px; color:var(--muted);">Task started ${startStr}</div>
+        <div style="font-size:0.75rem; text-transform:uppercase; letter-spacing:0.05em; color:${color}; font-weight:700;">Open FDP In Progress</div>
+        <div style="font-family:var(--font-mono); font-size:0.75rem; color:var(--muted);">Task started ${startStr}</div>
       </div>
-      <div style="font-family:var(--font-mono); font-size:26px; font-weight:700; margin-top:6px; color:${color};">Must land by ${deadlineStr}</div>
-      <div style="font-size:12px; color:var(--muted); margin-top:4px;">${statusText} · Max FDP ${fmtHrs(st.max)}h${adj.length ? ` (${adj.join(', ')})` : ''}</div>
+      <div style="font-family:var(--font-mono); font-size:1.625rem; font-weight:700; margin-top:6px; color:${color};">Must land by ${deadlineStr}</div>
+      <div style="font-size:0.75rem; color:var(--muted); margin-top:4px;">${statusText} · Max FDP ${fmtHrs(st.max)}h${adj.length ? ` (${adj.join(', ')})` : ''}</div>
       ${staleWarning}
     </div>`;
 }
 function multipleOpenWarningHTML(openList){
-  const items = openList.map(e=> `${fmtLogDate(e.date)} ${e.startTime} — ${e.notes || '(no notes)'}`).join('<br>');
+  const items = openList.map(e=> `${fmtLogDate(e.date)} ${esc(e.startTime)} — ${esc(e.notes) || '(no notes)'}`).join('<br>');
   return `
     <div style="border:1px solid var(--red); border-radius:10px; padding:14px 16px; margin-bottom:16px; background:var(--panel2);">
-      <div style="font-size:12px; text-transform:uppercase; letter-spacing:0.05em; color:var(--red); font-weight:700; margin-bottom:6px;">⚠ Multiple Open FDPs (${openList.length})</div>
-      <div style="font-size:12px; color:var(--muted);">This many tasks are currently logged as still in progress — likely a data entry error. Close out the ones that have actually finished:</div>
-      <div style="font-size:12px; color:var(--text); margin-top:8px; font-family:var(--font-mono); line-height:1.6;">${items}</div>
+      <div style="font-size:0.75rem; text-transform:uppercase; letter-spacing:0.05em; color:var(--red); font-weight:700; margin-bottom:6px;">⚠ Multiple Open FDPs (${openList.length})</div>
+      <div style="font-size:0.75rem; color:var(--muted);">This many tasks are currently logged as still in progress — likely a data entry error. Close out the ones that have actually finished:</div>
+      <div style="font-size:0.75rem; color:var(--text); margin-top:8px; font-family:var(--font-mono); line-height:1.6;">${items}</div>
     </div>`;
 }
 
@@ -2029,37 +2176,6 @@ function pastDayStandby(dayDate, all){
   standbyEntries.sort((a,b)=> entryDates(b).end - entryDates(a).end);
   return { standby: standbyEntries[0], flagMultiple: standbyEntries.length > 1 };
 }
-// Sum of FDP + NFD duration for entries logged directly against a calendar
-// day, used as the final fallback when there's no standby to anchor the
-// Duty tile to at all (no standby active, and none finishing that day).
-// Since there's no standby in this branch by definition, every FDP/NFD dated
-// that day is already "standalone" — no containment filtering needed.
-function dutyHoursForDay(dayDate, all){
-  const dayKey = dateKey(dayDate);
-  const ivs = [];
-  for(const e of all){
-    if(e.type!=='FDP' && e.type!=='NFD') continue;
-    if(e.date !== dayKey) continue;
-    const {start,end} = entryDates(e);
-    ivs.push({start:start.getTime(), end:end.getTime()});
-  }
-  return mergeIntervals(ivs).reduce((acc,iv)=> acc + (iv.end-iv.start)/3600000, 0);
-}
-// Shared standby context for the Duty and Flight Time (last FDP) tiles — the
-// same currently-active > finishes-today/this-day > (none) chain the FDP and
-// Flight Time (Shift) tiles already use, centralised so all four tiles agree
-// on what "today" or "this displayed day" means.
-function currentDutyContext(all){
-  const { mode } = getStatusReference();
-  if(mode === 'future') return { standby:null, mode, dayDate:null };
-  if(mode === 'live'){
-    const { standby } = findTodayStandbyContext(all);
-    return { standby, mode, dayDate: new Date() };
-  }
-  const dayDate = new Date(timelineCenterDate);
-  const { standby } = pastDayStandby(dayDate, all);
-  return { standby, mode, dayDate };
-}
 // Standby whose START (not end) falls on the given day — used by the 10.12.2
 // tile for past/future dates, since that check is anchored to when a duty
 // period is/was about to commence, not when one finished.
@@ -2092,7 +2208,7 @@ function standaloneFDPsForDay(dayDate, all){
     if(e.type!=='FDP' || e.date!==dayKey) return false;
     const {start} = entryDates(e);
     return !standbyEntries.some(s => {
-      const {start: ss, end: se} = effectiveStandbyWindow(s, all);
+      const {start: ss, end: se} = standbyWindowFor(s, all);
       return start.getTime()>=ss.getTime() && start.getTime()<=se.getTime();
     });
   });
@@ -2149,65 +2265,31 @@ function computeFDPTileState(all){
 // FDPs whose start falls within a standby's effective window (same containment rule periodFDPStats uses).
 function fdpsWithinStandby(standby, all){
   if(!standby) return [];
-  const {start: sbStart, end: sbEnd} = effectiveStandbyWindow(standby, all);
+  const {start: sbStart, end: sbEnd} = standbyWindowFor(standby, all);
   return all.filter(e=>{
     if(e.type!=='FDP') return false;
     const {start} = entryDates(e);
     return start.getTime() >= sbStart.getTime() && start.getTime() <= sbEnd.getTime();
   });
 }
-// Sums flight time across a set of FDPs; the "limit" is a visual size
-// reference only (10h single-pilot / 12h multi-crew is a per-FDP cap per
-// 10.6, not an actual per-shift rule — there's no regulatory shift-level
-// flight time limit to compare against).
-function sumFlightTimeWithLimit(fdps){
-  const total = fdps.reduce((acc,e)=> acc + Number(e.flightTime||0), 0);
-  const limit = fdps.some(e=> e.pilotType==='multi') ? 12 : 10;
-  return { total, limit };
-}
-function computeShiftFlightTimeState(all){
-  const { mode } = getStatusReference();
-  // Same bug the FDP tile had: this used to unconditionally return empty for
-  // any future day regardless of what's actually planned. Mirror the FDP
-  // tile's future-mode fix — a standby STARTING that day, else the earliest
-  // standalone FDP, else genuinely empty.
-  if(mode === 'future'){
-    const dayDate = new Date(timelineCenterDate);
-    const standby = standbyStartingOnDay(dayDate, all);
-    if(standby){
-      const fdps = fdpsWithinStandby(standby, all);
-      if(!fdps.length) return { empty:true };
-      return { empty:false, ...sumFlightTimeWithLimit(fdps) };
-    }
-    const standalone = standaloneFDPsForDay(dayDate, all);
-    if(standalone.length) return { empty:false, ...sumFlightTimeWithLimit(standalone) };
-    return { empty:true };
-  }
-
-  if(mode === 'live'){
-    const { standby } = findTodayStandbyContext(all);
-    if(standby){
-      const fdps = fdpsWithinStandby(standby, all);
-      if(!fdps.length) return { empty:true };
-      return { empty:false, ...sumFlightTimeWithLimit(fdps) };
-    }
-    // No standby active/finished today — fall through to today's standalone FDPs
-    const standalone = standaloneFDPsForDay(new Date(timelineCenterDate), all);
-    if(standalone.length) return { empty:false, ...sumFlightTimeWithLimit(standalone) };
-    return { empty:true };
-  }
-
-  // past
-  const dayDate = new Date(timelineCenterDate);
-  const { standby } = pastDayStandby(dayDate, all);
-  if(standby){
-    const fdps = fdpsWithinStandby(standby, all);
-    if(!fdps.length) return { empty:true };
-    return { empty:false, ...sumFlightTimeWithLimit(fdps) };
-  }
-  const standalone = standaloneFDPsForDay(dayDate, all);
-  if(standalone.length) return { empty:false, ...sumFlightTimeWithLimit(standalone) };
-  return { empty:true };
+// Flight Time (10.6) for the FDP the FDP tile is reporting on. 10.6 limits
+// flight time within a single FDP to 10 hrs single-pilot / 12 hrs multi-crew,
+// and under the FDP model every task in a shift is one FDP — so the old pair of
+// tiles ("last FDP" and "Shift") were measuring the same thing against the same
+// limit, one of them labelled as a reference figure because it predates the
+// model. This sums the real tasks of that one FDP and compares them with the
+// actual per-FDP limit. Virtual (hypothetical) tasks carry no flight time.
+function flightTimeTileState(fdpTile){
+  if(!fdpTile || fdpTile.empty || fdpTile.noTasks || !fdpTile.st || !fdpTile.st.group) return null;
+  const tasks = fdpTile.st.group.tasks.filter(t => !t.virtual).map(t => t.e);
+  if(!tasks.length) return null;
+  const total = tasks.reduce((acc,e)=> acc + Number(e.flightTime||0), 0);
+  const multi = tasks.some(e => e.pilotType === 'multi');
+  // A task still in progress has no flight time yet, which is expected rather
+  // than missing; a finished one with none recorded is worth flagging, since it
+  // silently understates the total.
+  const missing = tasks.filter(e => !isOpenEntry(e) && !(Number(e.flightTime) > 0)).length;
+  return { total, limit: multi ? 12 : 10, multi, taskCount: tasks.length, missing };
 }
 
 function renderDashboard(){
@@ -2268,72 +2350,28 @@ function renderDashboard(){
   const lastFDP = lastOfType(entries, 'FDP', now);
   const lastStandby = lastOfType(entries, 'STANDBY', now);
 
-  // Duty: NFD + FDP within the currently-active standby, or (if none active)
-  // the standby that finishes today/this displayed day, or (if no standby at
-  // all) the total FDP/NFD logged directly against the day — same three-tier
-  // fallback the FDP and Flight Time (Shift) tiles use, via currentDutyContext.
-  const dutyCtx = currentDutyContext(entries);
-  if(dutyCtx.mode === 'future'){
-    html += gaugeHTML('Duty', 0, 12, 'hrs', 'Not applicable to future days', false);
-  } else if(dutyCtx.standby){
-    const dutyHrs = dutyPeriodHours(entries, dutyCtx.standby);
-    const {start: standbyStart} = entryDates(dutyCtx.standby);
-    const [dutyMax] = fdpTableValues(standbyStart, 'single');
-    html += gaugeHTML('Duty', dutyHrs, dutyMax, 'hrs',
-      `NFD + FDP this standby period. Reference only — Table 6 is defined against FDP start time, not standby start, so this max is a local convention rather than a rule from the manual.`,
-      dutyHrs > dutyMax);
-  } else {
-    const dutyHrs = dutyHoursForDay(dutyCtx.dayDate, entries);
-    if(dutyHrs > 0){
-      html += gaugeHTML('Duty', dutyHrs, 12, 'hrs',
-        'No standby logged — total FDP/NFD for the day (12h shown as a visual reference only)', false);
-    } else {
-      html += gaugeHTML('Duty', 0, 12, 'hrs', 'No standby period or FDP/NFD logged for this day', false);
-    }
-  }
+  // The Duty tile was removed in v0.67.0. Its maximum was a local convention
+  // rather than a rule — Table 6 is defined against FDP start time, and the tile
+  // applied it to the standby start — so it was the one gauge on the dashboard
+  // measuring against a number OMY does not set. Cumulative duty against the
+  // real 10.14 limits is still shown below, and hours per shift are in the Duty
+  // Log. currentDutyContext, dutyPeriodHours and dutyHoursForDay went with it.
 
-  // Per-FDP flight time limit (10.6) — the most recent FDP within the same
-  // Duty-tile context above (currently-active standby > standby finishing
-  // this day > this day's standalone FDPs), not simply the last FDP ever
-  // logged, which could be from a previous, already-finished shift.
-  //
-  // Future mode needs its own lookup rather than reusing dutyCtx — that
-  // context deliberately returns no standby/day for future dates (the Duty
-  // tile intentionally shows "not applicable" there), but this tile SHOULD
-  // show a planned FDP's flight time in advance, the same way the FDP tile
-  // itself now does.
-  let contextFDPs = [];
-  if(mode === 'future'){
-    const futureDayDate = new Date(timelineCenterDate);
-    const futureStandby = standbyStartingOnDay(futureDayDate, entries);
-    contextFDPs = futureStandby ? fdpsWithinStandby(futureStandby, entries) : standaloneFDPsForDay(futureDayDate, entries);
-  } else if(dutyCtx.standby) contextFDPs = fdpsWithinStandby(dutyCtx.standby, entries);
-  else if(dutyCtx.dayDate) contextFDPs = standaloneFDPsForDay(dutyCtx.dayDate, entries);
-  const lastFDPInContext = contextFDPs.length
-    ? contextFDPs.slice().sort((a,b)=> entryDates(b).start - entryDates(a).start)[0]
-    : null;
-  if(lastFDPInContext){
-    const ft = Number(lastFDPInContext.flightTime||0);
-    const ftLimit = flightTimeLimitFor(lastFDPInContext);
-    html += gaugeHTML('Flight Time (last FDP)', ft, ftLimit, 'hrs max',
-      `Max flight time within a single FDP (${ftLimit}h ${lastFDPInContext.pilotType==='multi'?'multi-crew':'single pilot'})`,
-      ft > ftLimit);
+  // Flight Time (10.6) — one tile. Every task in a shift belongs to the same
+  // FDP under the v0.59 model, so "last FDP" and "this shift" were two names for
+  // the same number, and 10.6's 10h/12h is a per-FDP limit, which is now exactly
+  // what this measures. It reads the SAME FDP the tile above resolved, so the two
+  // cannot disagree about which duty period is being reported.
+  const ftState = flightTimeTileState(fdpTile);
+  if(!ftState){
+    html += gaugeHTML('Flight Time (10.6)', 0, 10, 'hrs max', 'No FDP logged for this day', false);
   } else {
-    html += gaugeHTML('Flight Time (last FDP)', 0, 10, 'hrs max', 'No FDP logged for this shift/day', false);
-  }
-
-  // Flight Time (Shift) — total flight time across FDPs overlapping the
-  // relevant standby period (or the calendar day's FDPs if none). The
-  // 10/12h shown as "max" is the per-FDP limit (10.6) used here purely as a
-  // visual size reference — there's no actual regulatory per-shift flight
-  // time cap to compare against.
-  const shiftFT = computeShiftFlightTimeState(entries);
-  if(shiftFT.empty){
-    html += gaugeHTML('Flight Time (Shift)', 0, 10, 'hrs', 'No FDP logged for this shift', false);
-  } else {
-    html += gaugeHTML('Flight Time (Shift)', shiftFT.total, shiftFT.limit, 'hrs',
-      `Total flight time this shift (reference only — ${shiftFT.limit}h is the per-FDP limit, not a per-shift rule)`,
-      shiftFT.total > shiftFT.limit);
+    const crewLabel = ftState.multi ? 'multi-crew' : 'single pilot';
+    const sub = [`Flight time within this FDP · limit ${fmtHrs(ftState.limit)}h ${crewLabel}`];
+    if(ftState.taskCount > 1) sub.push(`${ftState.taskCount} tasks`);
+    if(ftState.missing > 0) sub.push(`⚠ ${ftState.missing} task${ftState.missing===1?'':'s'} with no flight time recorded`);
+    html += gaugeHTML('Flight Time (10.6)', ftState.total, ftState.limit, 'hrs max',
+      sub.join(' · '), ftState.total > ftState.limit);
   }
 
   // Off-duty period compliance (Tables 10/11) — this is a MINIMUM requirement:
@@ -2364,20 +2402,20 @@ function renderDashboard(){
       // Shouldn't normally occur (prevDuty was found precisely because it
       // ends at/before lastDutyish's start), but guard anyway.
       html += minGaugeHTML('Off-Duty Period (10.12.3)', 0, st.required, 'hrs',
-        `${fmtHrs(st.required)}h required after ${prevDuty.type} ending ${fmtLogDate(prevDuty.date)}${postDutyNote}`,
+        `${fmtHrs(st.required)}h required after ${esc(prevDuty.type)} ending ${fmtLogDate(prevDuty.date)}${postDutyNote}`,
         'pending');
     } else if(st.actual < st.required){
       html += minGaugeHTML('Off-Duty Period (10.12.3)', st.actual, st.required, 'hrs',
-        `Shortfall after ${prevDuty.type} ending ${fmtLogDate(prevDuty.date)} — ${lastDutyish.type} on ${fmtLogDate(lastDutyish.date)} started ${fmtHrs(st.required - st.actual)}h too early${postDutyNote}`,
+        `${st.actual < 0 ? `No rest taken — the ${esc(lastDutyish.type)} on ${fmtLogDate(lastDutyish.date)} overlaps the ${esc(prevDuty.type)} before it by ${fmtHrs(-st.actual)}h` : `Shortfall after ${esc(prevDuty.type)} ending ${fmtLogDate(prevDuty.date)} — ${esc(lastDutyish.type)} on ${fmtLogDate(lastDutyish.date)} started ${fmtHrs(st.required - st.actual)}h too early`}${postDutyNote}`,
         'shortfall');
     } else {
       html += minGaugeHTML('Off-Duty Period (10.12.3)', st.actual, st.required, 'hrs',
-        `${fmtHrs(st.actual)}h taken after ${prevDuty.type} ending ${fmtLogDate(prevDuty.date)}, before ${lastDutyish.type} on ${fmtLogDate(lastDutyish.date)} — requirement met${postDutyNote}`,
+        `${fmtHrs(st.actual)}h taken after ${esc(prevDuty.type)} ending ${fmtLogDate(prevDuty.date)}, before ${esc(lastDutyish.type)} on ${fmtLogDate(lastDutyish.date)} — requirement met${postDutyNote}`,
         'met');
     }
   } else if(lastDutyish){
     html += minGaugeHTML('Off-Duty Period (10.12.3)', 0, 10, 'hrs',
-      `No earlier FDP or standby logged before the ${lastDutyish.type} on ${fmtLogDate(lastDutyish.date)}`,
+      `No earlier FDP or standby logged before the ${esc(lastDutyish.type)} on ${fmtLogDate(lastDutyish.date)}`,
       'pending');
   } else {
     html += minGaugeHTML('Off-Duty Period (10.12.3)', 0, 10, 'hrs', 'No FDP or standby logged yet', 'pending');
@@ -2408,7 +2446,7 @@ function renderDashboard(){
     } else {
       const checkPoint = entryDates(dutyEntry).start;
       const pr = precedingRestCheck(checkPoint, entries);
-      const contextLabel = `before ${dutyEntry.type==='STANDBY'?'Standby':'FDP'} starting ${dutyEntry.startTime}`;
+      const contextLabel = `before ${dutyEntry.type==='STANDBY'?'Standby':'FDP'} starting ${esc(dutyEntry.startTime)}`;
       if(pr.satisfied){
         html += statusGaugeHTML('Preceding Rest (10.12.2)', 'ok', 'Satisfied',
           `Qualifying rest found via the ${pr.via} rule (${prGapText(pr)}) — ${contextLabel}`);
@@ -2560,11 +2598,16 @@ function buildLogRows(subset, all){
         if(st.reduction > 0) why.push(`−${fmtHrs(st.reduction)}h NFD`);
         const detail = why.length ? ` · ${why.join(', ')}` : '';
         const scope = multiTask ? ` across ${group.tasks.length} tasks` : '';
-        status = st.value > max + 0.001
-          ? `<span class="status-over" title="FDP ${fmtHrs(st.value)}h${scope}, max ${fmtHrs(max)}h${detail}">Over (${fmtHrs(st.value)}/${fmtHrs(max)}h)</span>`
-          : `<span class="status-ok" title="FDP ${fmtHrs(st.value)}h${scope}, max ${fmtHrs(max)}h${detail}">OK (${fmtHrs(st.value)}/${fmtHrs(max)}h)</span>`;
+        const reason = `FDP ${fmtHrs(st.value)}h${scope}, max ${fmtHrs(max)}h${detail}`;
+        const over = st.value > max + 0.001;
+        status = `<span class="${over ? 'status-over' : 'status-ok'}" title="${esc(reason)}"`
+          + ` data-tip="${esc(reason)}" data-tip-title="${esc(e.type + ' ' + fmtLogDate(e.date))}">`
+          + `${over ? 'Over' : 'OK'} (${fmtHrs(st.value)}/${fmtHrs(max)}h)</span>`;
       }
     } else if(e.type==='STANDBY'){
+      const sType = standbyShiftType(e);
+      if(sType === 'day') flags += '<span class="badge badge-split">DAY</span>';
+      else if(sType === 'night') flags += '<span class="badge badge-lno">NIGHT</span>';
       status = dur > 24 ? `<span class="status-over">Over 24h</span>` : `<span class="status-ok">OK</span>`;
     }
 
@@ -2578,14 +2621,14 @@ function buildLogRows(subset, all){
 
     return `<tr class="${rowClass}">
       <td>${fmtLogDate(e.date)}</td>
-      <td>${e.type}</td>
-      <td>${e.startTime}</td>
-      <td>${isOpenEntry(e) ? '<span style="color:var(--tl-fdp); font-weight:700;">In progress</span>' : e.endTime}</td>
+      <td>${esc(e.type)}</td>
+      <td>${esc(e.startTime)}</td>
+      <td>${isOpenEntry(e) ? '<span style="color:var(--tl-fdp); font-weight:700;">In progress</span>' : esc(e.endTime)}</td>
       <td>${fmtHrs(dur)}${isOpenEntry(e) ? '+' : ''}</td>
       <td>${e.type==='FDP' && e.flightTime ? fmtHrs(Number(e.flightTime)) : '<span style="color:var(--muted2)">—</span>'}</td>
-      <td>${e.type==='FDP' && fmtKSS(e) ? fmtKSS(e) : '<span style="color:var(--muted2)">—</span>'}</td>
+      <td>${e.type==='FDP' && fmtKSS(e) ? esc(fmtKSS(e)) : '<span style="color:var(--muted2)">—</span>'}</td>
       <td>${flags || '—'}</td>
-      <td style="max-width:160px; white-space:normal; word-break:break-word;" title="${(e.notes||'').replace(/"/g,'&quot;')}">${e.notes ? e.notes : '<span style="color:var(--muted2)">—</span>'}</td>
+      <td style="max-width:190px; white-space:normal; word-break:break-word;" title="${esc(e.notes)}">${e.notes ? esc(e.notes) : '<span style="color:var(--muted2)">—</span>'}</td>
       <td>${status}</td>
       <td>
         <button class="del-btn" data-id="${e.id}" data-action="edit" style="margin-right:6px;">Edit</button>
@@ -2601,13 +2644,24 @@ function attachLogRowListeners(container){
       const id = btn.getAttribute('data-id');
       const action = btn.getAttribute('data-action');
       if(action === 'delete'){
+        // B9 — a row delete used to happen on one click with no confirmation and
+        // no way back, while Delete All was guarded twice over. It now names what
+        // is going and offers an undo afterwards.
+        const target = entries.find(e=>String(e.id)===String(id));
+        if(!target) return;
+        const what = `${target.type} on ${fmtLogDate(target.date)}, ${target.startTime}`
+          + `${target.endTime ? '–'+target.endTime : ' (in progress)'}`
+          + `${target.notes ? ' — '+target.notes : ''}`;
+        if(!confirm(`Delete this entry?\n\n${what}\n\nIt will be removed on every device. You will get one chance to undo.`)) return;
         // If the write is refused (data not loaded), put the row back rather
         // than leaving the screen showing a deletion that was never stored.
         const before = entries;
+        const position = entries.findIndex(e=>String(e.id)===String(id));
         entries = entries.filter(e=>String(e.id)!==String(id));
         if(!await saveEntries(entries)){ entries = before; renderAll(); return; }
         if(String(editingId)===String(id)) exitEditMode();
         renderAll();
+        offerUndoDelete(target, position, what);
       } else if(action === 'edit'){
         const entry = entries.find(e=>String(e.id)===String(id));
         if(entry) enterEditMode(entry);
@@ -2616,6 +2670,39 @@ function attachLogRowListeners(container){
   });
 }
 
+// B9 — a single-level undo for the last deleted row. Deliberately not a stack:
+// one mistaken click is the case worth covering, and a longer history would need
+// to survive remote changes from other devices, which it cannot honestly do.
+let pendingUndo = null;
+let undoTimer = null;
+const UNDO_SECONDS = 20;
+function offerUndoDelete(entry, position, description){
+  pendingUndo = { entry, position };
+  const el = document.getElementById('undoToast');
+  document.getElementById('undoToastText').textContent = `Deleted ${description}`;
+  el.classList.add('show');
+  if(undoTimer) clearTimeout(undoTimer);
+  undoTimer = setTimeout(dismissUndo, UNDO_SECONDS*1000);
+}
+function dismissUndo(){
+  pendingUndo = null;
+  if(undoTimer){ clearTimeout(undoTimer); undoTimer = null; }
+  const el = document.getElementById('undoToast');
+  if(el) el.classList.remove('show');
+}
+async function performUndoDelete(){
+  if(!pendingUndo) return;
+  const { entry, position } = pendingUndo;
+  // Don't resurrect it if it is somehow already back (a remote change landed).
+  if(entries.some(e => String(e.id) === String(entry.id))){ dismissUndo(); return; }
+  const before = entries;
+  const restored = [...entries];
+  restored.splice(Math.max(0, Math.min(position, restored.length)), 0, entry);
+  entries = restored;
+  if(!await saveEntries(entries)){ entries = before; renderAll(); return; }
+  dismissUndo();
+  renderAll();
+}
 function renderLog(){
   const body = document.getElementById('logBody');
   // Current Data's Duty Log is limited to the 3 days shown on the Time Line.
@@ -2732,19 +2819,18 @@ function buildAboveBands(dayStart, dayEnd, all){
     const clip = clipToDay(start, end, dayStart, dayEnd);
     if(!clip) continue;
     if(e.type==='FDP') fdpIvs.push(clip);
-    else if(e.type==='NFD') nfdIvs.push(clip);
+    else if(e.type==='NFD') nfdIvs.push({...clip, e});
   }
   // Give FDP priority: drop any NFD interval that overlaps an FDP interval at all.
   const nfdFiltered = nfdIvs.filter(n => !fdpIvs.some(f => f.start < n.end && f.end > n.start));
   const bands = [
     ...fdpIvs.map(iv => ({...iv, type:'FDP'})),
-    ...nfdFiltered.map(iv => ({...iv, type:'NFD'})),
+    ...nfdFiltered.map(iv => ({start:iv.start, end:iv.end, type:'NFD', hatch: isHatchedNFD(iv.e)})),
   ];
 
-  for(const rb of mandatoryRestBands(all)){
+  for(const { rb, conflict } of mandatoryRestBandsFor(all)){
     const clip = clipToDay(new Date(rb.start), new Date(rb.end), dayStart, dayEnd);
     if(clip) bands.push({...clip, type:'KSS_REST', source: rb.sourceEntry, hours: rb.hours, via: rb.via, kssScore: rb.kssScore});
-    const conflict = mandatoryRestConflict(rb, all);
     if(conflict){
       if(conflict.kind === 'standby'){
         const confClip = clipToDay(new Date(rb.start), new Date(Math.min(conflict.standbyEnd, rb.end)), dayStart, dayEnd);
@@ -2770,7 +2856,7 @@ function buildBelowBands(dayStart, dayEnd, all){
     const clip = clipToDay(start, end, dayStart, dayEnd);
     if(clip) bands.push({...clip, type:'STANDBY'});
 
-    const st = standbyRestStatus(e, all);
+    const st = standbyRestStatusFor(e, all);
     if(!st) continue;
     const restClip = clipToDay(st.restStart, st.restEnd, dayStart, dayEnd);
     if(restClip) bands.push({...restClip, type:'REST', required:st.required, overrun:st.overrun});
@@ -2783,6 +2869,9 @@ function buildBelowBands(dayStart, dayEnd, all){
   return bands;
 }
 
+function isHatchedNFD(e){
+  return !!(e && e.type === 'NFD' && /^\s*army\b/i.test(e.notes || ''));
+}
 function bandColor(type){
   if(type==='FDP') return 'var(--tl-fdp)';
   if(type==='NFD') return 'var(--tl-nfd)';
@@ -2870,6 +2959,10 @@ function buildDayRowHTML(d, allMarkers, useDayNumberLabel){
     ticksHTML += `<div class="timeline-tick ${isMajor?'major':'minor'}" style="left:${left}%;"></div>`;
   }
 
+  // Every explanation drawn on this row, collected so the row's ⓘ chip can list
+  // them. A band only minutes long is a hairline on a phone, so tapping the
+  // band itself cannot be the only way to read why it is there.
+  const tipItems = [];
   const above = buildAboveBands(dayStart, dayEnd, entries);
   const below = buildBelowBands(dayStart, dayEnd, entries);
   const bandsHTML = [...above, ...below].map(b=>{
@@ -2880,9 +2973,13 @@ function buildDayRowHTML(d, allMarkers, useDayNumberLabel){
     else if(b.type==='CONFLICT') cls = 'below conflict';
     else if(b.type==='KSS_REST') cls = 'above kssrest';
     else if(b.type==='KSS_CONFLICT') cls = 'above kssconflict';
+    if(b.hatch) cls += ' hatched';   // appended last: the branches above reassign cls
     const st = new Date(b.start).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', hour12:false});
     const en = new Date(b.end).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', hour12:false});
-    return `<div class="timeline-band ${cls}" style="left:${leftPct}%; width:${widthPct}%; background-color:${bandColor(b.type)};" title="${bandLabel(b)}: ${st}–${en}"></div>`;
+    const label = `${bandLabel(b)}: ${st}–${en}`;
+    tipItems.push({ label, notable: b.type==='CONFLICT' || b.type==='KSS_CONFLICT' });
+    // I7 — the same text in data-tip, so a tap can show what hover shows.
+    return `<div class="timeline-band ${cls}" style="left:${leftPct}%; width:${widthPct}%; background-color:${bandColor(b.type)};" title="${esc(label)}" data-tip="${esc(label)}"></div>`;
   }).join('');
 
   let nowMarkerHTML = '';
@@ -2897,13 +2994,20 @@ function buildDayRowHTML(d, allMarkers, useDayNumberLabel){
   const markersHTML = markersForDay.map(m=>{
     const pct = pctOfDay(m.time.getTime(), dayStart);
     const timeStr = m.time.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', hour12:false});
-    return `<div class="timeline-marker" style="left:${pct}%; background:${m.color}; box-shadow:0 0 4px ${m.color};" title="${m.label}: ${timeStr}"></div>`;
+    const label = `${m.label}: ${timeStr}`;
+    tipItems.push({ label, notable:false });
+    return `<div class="timeline-marker" style="left:${pct}%; background:${m.color}; box-shadow:0 0 4px ${m.color};" title="${esc(label)}" data-tip="${esc(label)}"></div>`;
   }).join('');
+
+  const notable = tipItems.filter(t => t.notable).length;
+  const chipHTML = tipItems.length
+    ? `<button type="button" class="tip-chip${notable ? ' has-conflict' : ''}" data-tip-day="${dateStr}" data-tip-list="${esc(JSON.stringify(tipItems.map(t=>t.label)))}">&#9432; ${tipItems.length}${notable ? ` &middot; ${notable} conflict${notable===1?'':'s'}` : ''}</button>`
+    : '';
 
   return `
     <div class="timeline-row">
       <div class="timeline-row-label">
-        <span>${dayLabel}${isRealToday ? ' &bull; current' : ''}</span>
+        <span>${dayLabel}${isRealToday ? ' &bull; current' : ''}${chipHTML}</span>
         <span class="tl-date">${dateStr}</span>
       </div>
       <div class="timeline-axis">
@@ -3040,7 +3144,7 @@ function renderCalendarDutyLogHTML(){
   const rows = buildLogRows(subset, entries);
   const monthLabel = calendarMonthDate.toLocaleDateString([], {month:'long', year:'numeric'});
   return `
-    <div style="font-size:11px; text-transform:uppercase; letter-spacing:0.05em; color:var(--muted); font-weight:700; margin-bottom:14px;">Duty Log — ${monthLabel}</div>
+    <div style="font-size:0.6875rem; text-transform:uppercase; letter-spacing:0.05em; color:var(--muted); font-weight:700; margin-bottom:14px;">Duty Log — ${monthLabel}</div>
     <table>
       <thead>
         <tr>
@@ -3106,6 +3210,9 @@ function enterEditMode(entry){
   document.getElementById('f-start').value = entry.startTime;
   document.getElementById('f-end').value = entry.endTime;
   document.getElementById('f-notes').value = entry.notes || '';
+  // standbyShiftType() falls back to the notes for a pre-v0.66.0 entry, so
+  // opening an old standby and saving it migrates it to the explicit field.
+  document.getElementById('f-shiftType').value = entry.type === 'STANDBY' ? standbyShiftType(entry) : '';
   if(entry.type === 'FDP'){
     const isOpen = !entry.endTime;
     document.getElementById('f-openTask').checked = isOpen;
@@ -3158,25 +3265,27 @@ document.getElementById('todayBtn').addEventListener('click', ()=>{
 document.getElementById('dayShiftBtn').addEventListener('click', ()=>{
   document.getElementById('f-start').value = '08:00';
   document.getElementById('f-end').value = '18:00';
-  document.getElementById('f-notes').value = 'Day Shift';
+  document.getElementById('f-shiftType').value = 'day';
+  document.getElementById('f-notes').value = '';
 });
 document.getElementById('nightShiftBtn').addEventListener('click', ()=>{
   document.getElementById('f-start').value = '18:00';
   document.getElementById('f-end').value = '08:00';
-  document.getElementById('f-notes').value = 'Night Shift';
+  document.getElementById('f-shiftType').value = 'night';
+  document.getElementById('f-notes').value = '';
 });
 
 // The standard roster block: two Day Shifts then two Night Shifts, starting on
 // the date in the form. Written straight to the log rather than into the form,
-// since it is four entries. The "Day Shift"/"Night Shift" notes are what the
-// 10.6 2200 cap detection reads, so they have to match the single-shift
-// buttons exactly.
+// since it is four entries. Each carries the explicit shiftType the 10.6 2200
+// cap reads (I6), and leaves Notes free for the person to use.
 const SHIFT_BLOCK_PATTERN = [
-  { dayOffset:0, startTime:'08:00', endTime:'18:00', notes:'Day Shift' },
-  { dayOffset:1, startTime:'08:00', endTime:'18:00', notes:'Day Shift' },
-  { dayOffset:2, startTime:'18:00', endTime:'08:00', notes:'Night Shift' },
-  { dayOffset:3, startTime:'18:00', endTime:'08:00', notes:'Night Shift' },
+  { dayOffset:0, startTime:'08:00', endTime:'18:00', shiftType:'day' },
+  { dayOffset:1, startTime:'08:00', endTime:'18:00', shiftType:'day' },
+  { dayOffset:2, startTime:'18:00', endTime:'08:00', shiftType:'night' },
+  { dayOffset:3, startTime:'18:00', endTime:'08:00', shiftType:'night' },
 ];
+function shiftTypeLabel(t){ return t === 'day' ? 'Day Shift' : (t === 'night' ? 'Night Shift' : 'Standby'); }
 function addDaysISO(iso, days){
   const d = combineDateTime(iso, '00:00');
   d.setDate(d.getDate() + days);
@@ -3188,24 +3297,25 @@ document.getElementById('shiftBlockBtn').addEventListener('click', async ()=>{
 
   const planned = SHIFT_BLOCK_PATTERN.map(p => ({
     date: addDaysISO(startISO, p.dayOffset),
-    startTime: p.startTime, endTime: p.endTime, notes: p.notes,
+    startTime: p.startTime, endTime: p.endTime, shiftType: p.shiftType,
   }));
 
   // Don't silently double up on a date that already has a standby.
   const clashes = planned.filter(p => entries.some(e => e.type==='STANDBY' && e.date === p.date));
   if(clashes.length){
-    const list = clashes.map(c => `${fmtLogDate(c.date)} (${c.notes})`).join(', ');
+    const list = clashes.map(c => `${fmtLogDate(c.date)} (${shiftTypeLabel(c.shiftType)})`).join(', ');
     if(!confirm(`A standby is already logged on ${list}.\n\nAdd the block anyway? This will create a second standby on ${clashes.length===1?'that date':'those dates'}.`)) return;
   }
 
-  const summary = planned.map(p => `${fmtLogDate(p.date)}  ${p.notes}  ${p.startTime}–${p.endTime}`).join('\n');
+  const summary = planned.map(p => `${fmtLogDate(p.date)}  ${shiftTypeLabel(p.shiftType)}  ${p.startTime}–${p.endTime}`).join('\n');
   if(!confirm(`Add this shift block?\n\n${summary}`)) return;
 
   const stamp = Date.now();
   const newEntries = planned.map((p, i) => ({
     id: `${stamp + i}-${Math.random().toString(36).slice(2,8)}`,
     type: 'STANDBY',
-    date: p.date, startTime: p.startTime, endTime: p.endTime, notes: p.notes,
+    date: p.date, startTime: p.startTime, endTime: p.endTime,
+    shiftType: p.shiftType, notes: '',
   }));
 
   const before = entries;
@@ -3292,6 +3402,10 @@ document.getElementById('addBtn').addEventListener('click', async ()=>{
     date, startTime, endTime,
     notes: document.getElementById('f-notes').value || '',
   };
+  if(currentType==='STANDBY'){
+    const st = document.getElementById('f-shiftType').value;
+    entry.shiftType = (st === 'day' || st === 'night') ? st : '';
+  }
   if(currentType==='FDP'){
     entry.pilotType = 'single';
     entry.flightTime = openTask ? 0 : (document.getElementById('f-flightTime').value || 0);
@@ -3343,6 +3457,114 @@ document.getElementById('exportBtn').addEventListener('click', ()=>{
   URL.revokeObjectURL(url);
 });
 
+// B8 — import used to accept any object carrying an id. A bad date or time
+// produced Invalid Date, which then propagated silently through every rolling
+// window, limit and gap calculation: the tiles kept rendering, just wrongly.
+// Each entry is now rebuilt field by field from a known shape, and anything that
+// cannot be made sense of is rejected with a reason rather than stored.
+const IMPORT_TYPES = ['FDP','NFD','STANDBY'];
+const IMPORT_EXT_TYPES = ['none','unforeseen','medical','dayshift22'];
+function validateImportedEntry(item, index){
+  const where = `entry ${index+1}`;
+  if(!item || typeof item !== 'object' || Array.isArray(item)) return { ok:false, reason:`${where}: not an entry` };
+  const type = String(item.type||'').toUpperCase();
+  if(!IMPORT_TYPES.includes(type)) return { ok:false, reason:`${where}: unknown type "${item.type}"` };
+
+  const date = String(item.date||'').trim();
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(date)) return { ok:false, reason:`${where}: date "${item.date}" is not YYYY-MM-DD` };
+  const probe = combineDateTime(date, '00:00');
+  if(isNaN(probe.getTime())) return { ok:false, reason:`${where}: date "${date}" is not a real date` };
+  // Reject 2026-02-30 and the like, which Date silently rolls forward.
+  if(probe.getFullYear() !== Number(date.slice(0,4)) || (probe.getMonth()+1) !== Number(date.slice(5,7))
+     || probe.getDate() !== Number(date.slice(8,10))){
+    return { ok:false, reason:`${where}: date "${date}" does not exist` };
+  }
+
+  const startTime = normalizeTime(item.startTime);
+  if(!startTime) return { ok:false, reason:`${where}: start time "${item.startTime}" is not a valid 24-hour time` };
+
+  let endTime = '';
+  const rawEnd = item.endTime === undefined || item.endTime === null ? '' : String(item.endTime).trim();
+  if(rawEnd === ''){
+    // Only an FDP may legitimately have no end time — a task still in progress.
+    if(type !== 'FDP') return { ok:false, reason:`${where}: ${type} has no end time` };
+  } else {
+    endTime = normalizeTime(rawEnd);
+    if(!endTime) return { ok:false, reason:`${where}: end time "${item.endTime}" is not a valid 24-hour time` };
+    if(endTime === startTime) return { ok:false, reason:`${where}: start and end time are both ${startTime}` };
+  }
+
+  const num = (v, max)=>{
+    const n = Number(v);
+    return (isFinite(n) && n >= 0 && n <= max) ? n : 0;
+  };
+  const kss = (v)=>{
+    const n = parseInt(v, 10);
+    return (isFinite(n) && n >= 1 && n <= 9) ? String(n) : '';
+  };
+
+  const entry = {
+    id: (item.id === undefined || item.id === null || String(item.id) === '')
+      ? (Date.now() + '-' + Math.random().toString(36).slice(2,8))
+      : String(item.id),
+    type, date, startTime, endTime,
+    notes: String(item.notes === undefined || item.notes === null ? '' : item.notes).slice(0, 500),
+  };
+  if(type === 'STANDBY'){
+    // I6 — carried through explicitly; a legacy backup has no field, and
+    // standbyShiftType() falls back to the notes for those.
+    entry.shiftType = (item.shiftType === 'day' || item.shiftType === 'night') ? item.shiftType : '';
+  }
+  if(type === 'FDP'){
+    entry.pilotType = item.pilotType === 'multi' ? 'multi' : 'single';
+    entry.flightTime = endTime ? num(item.flightTime, 24) : 0;
+    entry.kssStart = kss(item.kssStart !== undefined ? item.kssStart : item.kss);
+    entry.kssEnd = endTime ? kss(item.kssEnd) : '';
+    entry.increasedFDP = item.increasedFDP === true || item.increasedFDP === 'true';
+    entry.extType = IMPORT_EXT_TYPES.includes(item.extType) ? item.extType : 'none';
+    entry.extHours = (entry.extType === 'unforeseen' || entry.extType === 'medical') ? num(item.extHours, 24) : 0;
+  }
+  // Last line of defence: the entry has to produce real dates.
+  const d = entryDates(entry);
+  if(isNaN(d.start.getTime()) || isNaN(d.end.getTime())) return { ok:false, reason:`${where}: times do not resolve to a real date` };
+  return { ok:true, entry };
+}
+
+// I7 — one delegated handler for everything that carries an explanation. A
+// `title` attribute is hover-only, so on a phone or iPad the reason a band is
+// red was simply unreadable. Anything with data-tip now opens a sheet, and each
+// timeline row carries an ⓘ chip listing every explanation on that row, because
+// a band a few minutes long is a hairline nobody can hit with a finger.
+function showTipSheet(title, items){
+  const sheet = document.getElementById('tipSheet');
+  document.getElementById('tipSheetTitle').textContent = title;
+  document.getElementById('tipSheetBody').innerHTML = items.map(t => `<li>${esc(t)}</li>`).join('');
+  sheet.classList.add('show');
+}
+function hideTipSheet(){ document.getElementById('tipSheet').classList.remove('show'); }
+document.getElementById('tipSheetClose').addEventListener('click', hideTipSheet);
+document.addEventListener('click', (ev)=>{
+  const chip = ev.target.closest && ev.target.closest('.tip-chip');
+  if(chip){
+    let list = [];
+    try{ list = JSON.parse(chip.getAttribute('data-tip-list') || '[]'); }catch(e){ list = []; }
+    showTipSheet(chip.getAttribute('data-tip-day') || 'Details', list);
+    ev.stopPropagation();
+    return;
+  }
+  const tipped = ev.target.closest && ev.target.closest('[data-tip]');
+  if(tipped){
+    showTipSheet(tipped.getAttribute('data-tip-title') || 'Details', [tipped.getAttribute('data-tip')]);
+    ev.stopPropagation();
+    return;
+  }
+  if(!(ev.target.closest && ev.target.closest('#tipSheet'))) hideTipSheet();
+});
+document.addEventListener('keydown', (ev)=>{ if(ev.key === 'Escape') hideTipSheet(); });
+
+document.getElementById('undoDeleteBtn').addEventListener('click', performUndoDelete);
+document.getElementById('undoDismissBtn').addEventListener('click', dismissUndo);
+
 document.getElementById('importBtn').addEventListener('click', ()=>{
   document.getElementById('importFile').click();
 });
@@ -3360,22 +3582,38 @@ document.getElementById('importFile').addEventListener('change', async (ev)=>{
     const sig = e => `${e.type}|${e.date}|${e.startTime}|${e.endTime}`;
     const existingSignatures = new Set(entries.map(sig));
     let added = 0, skippedId = 0, skippedContent = 0;
-    const toAdd = [];
-    for(const item of imported){
-      if(!item || item.id === undefined) continue;
-      if(existingIds.has(String(item.id))){ skippedId++; continue; }
-      if(existingSignatures.has(sig(item))){ skippedContent++; continue; }
-      toAdd.push(item);
-      existingIds.add(String(item.id));
-      existingSignatures.add(sig(item));
+    const toAdd = [], rejected = [];
+    imported.forEach((item, i) => {
+      const v = validateImportedEntry(item, i);
+      if(!v.ok){ rejected.push(v.reason); return; }
+      const entry = v.entry;
+      if(existingIds.has(String(entry.id))){ skippedId++; return; }
+      if(existingSignatures.has(sig(entry))){ skippedContent++; return; }
+      toAdd.push(entry);
+      existingIds.add(String(entry.id));
+      existingSignatures.add(sig(entry));
       added++;
+    });
+    if(rejected.length){
+      const shown = rejected.slice(0, 10).join('\n');
+      const more = rejected.length > 10 ? `\n…and ${rejected.length - 10} more.` : '';
+      const proceed = confirm(
+        `${rejected.length} of ${imported.length} entries in this file could not be read and will be skipped:\n\n${shown}${more}\n\n` +
+        `${added} valid entr${added===1?'y':'ies'} would be imported. Continue?`
+      );
+      if(!proceed){ ev.target.value = ''; return; }
+    }
+    if(!toAdd.length && !skippedId && !skippedContent){
+      alert('Nothing was imported — no usable entries in that file.');
+      ev.target.value = '';
+      return;
     }
     const beforeImport = entries;
     entries = [...entries, ...toAdd];
     if(!await saveEntries(entries)){ entries = beforeImport; renderAll(); ev.target.value = ''; return; }
     renderAll();
     const skipped = skippedId + skippedContent;
-    alert(`Imported ${added} entr${added===1?'y':'ies'}.${skipped ? ` Skipped ${skipped} duplicate${skipped===1?'':'s'} (${skippedId} by matching ID, ${skippedContent} by matching type/date/time).` : ''}`);
+    alert(`Imported ${added} entr${added===1?'y':'ies'}.${skipped ? ` Skipped ${skipped} duplicate${skipped===1?'':'s'} (${skippedId} by matching ID, ${skippedContent} by matching type/date/time).` : ''}${rejected.length ? ` Rejected ${rejected.length} unreadable entr${rejected.length===1?'y':'ies'}.` : ''}`);
   }catch(err){
     alert('Could not read that file — make sure it is a backup exported from this tool.');
   }
@@ -3395,6 +3633,7 @@ document.getElementById('deleteAllBtn').addEventListener('click', async ()=>{
     alert('Deletion cancelled — input did not match.');
     return;
   }
+  dismissUndo();   // the pending undo would put an entry back into an emptied log
   const beforeDeleteAll = entries;
   entries = [];
   if(!await saveEntries(entries)){ entries = beforeDeleteAll; renderAll(); return; }
@@ -3462,11 +3701,26 @@ async function init(){
   entries = await loadEntries();
   renderAll();
   renderSyncStatus();
-  // Lengthened from 30s: the heavy compliance/timeline recompute doesn't need
-  // to run twice as often as it actually did — the live clock below still
-  // ticks every second regardless, so the visible time never looks stale.
-  setInterval(renderAll, 60000); // keep rolling windows and timeline markers fresh
-  setInterval(()=>{ document.getElementById('liveClock').textContent = new Date().toLocaleString([], {dateStyle:'medium', timeStyle:'medium', hour12:false}); }, 1000);
+  startRefreshTimers();
+}
+
+// B5 — signing out and back in without reloading used to start a second set of
+// timers every time, so the recompute ran twice, then three times, a minute.
+// They are now owned here and cleared on sign-out.
+let refreshTimers = [];
+function startRefreshTimers(){
+  stopRefreshTimers();
+  // 60s, not 30s: the heavy compliance/timeline recompute doesn't need to run
+  // twice as often as it used to — the clock below ticks every second anyway, so
+  // the visible time never looks stale.
+  refreshTimers.push(setInterval(renderAll, 60000));
+  refreshTimers.push(setInterval(()=>{
+    document.getElementById('liveClock').textContent = new Date().toLocaleString([], {dateStyle:'medium', timeStyle:'medium', hour12:false});
+  }, 1000));
+}
+function stopRefreshTimers(){
+  refreshTimers.forEach(clearInterval);
+  refreshTimers = [];
 }
 
 let appInitialized = false;
@@ -3483,6 +3737,8 @@ auth.onAuthStateChanged(async (user)=>{
     }
   } else {
     detachEntriesListener();
+    stopRefreshTimers();
+    dismissUndo();
     currentUid = null;
     appInitialized = false;
     document.getElementById('userEmailLabel').textContent = '';
