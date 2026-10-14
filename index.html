@@ -674,7 +674,7 @@ const firebaseConfig = {
              calculated (anything that can change a number on screen).
      PATCH — bug fixes and wording that don't change the rules.
    Set here only; the title and header read from it. */
-const APP_VERSION = '0.67.1';
+const APP_VERSION = '0.67.2';
 // Applied immediately rather than in init(), which only runs after sign-in —
 // otherwise the login screen shows a blank version tag.
 document.getElementById('versionTag').textContent = `v${APP_VERSION}`;
@@ -915,13 +915,30 @@ function combineDateTime(dateStr, timeStr){
 function isOpenEntry(e){
   return e.type === 'FDP' && !e.endTime;
 }
+// A single "now" for the whole of one render pass.
+//
+// Without this, entryDates() on an open FDP returned a fresh `new Date()` every
+// time it was asked, so one render could read the same task's end as two
+// different instants. That is how a standby whose open FDP had extended it came
+// to report the FDP as a duty starting 3.4h INSIDE the rest the same FDP had
+// just created, with an 11.4h shortfall: the standby's end was captured at one
+// millisecond and the FDP's end a millisecond later, so the task appeared to
+// outlast the rest it caused. The band appeared or not depending on timing,
+// which is the worst kind of wrong.
+//
+// renderAll() freezes the clock for the duration of a pass and releases it
+// afterwards, so every tile, band and marker in one paint agrees about the time.
+// Outside a render (a save, a click handler) it falls through to the real clock.
+let renderNow = null;
+function nowRef(){ return renderNow === null ? new Date() : new Date(renderNow); }
 function entryDates(e){
   let start = combineDateTime(e.date, e.startTime);
   let end;
   if(isOpenEntry(e)){
     // Open/in-progress FDP: treat "end" as right now, so duration and every
     // downstream calculation stays live until the task is actually closed out.
-    end = new Date();
+    // nowRef(), not new Date(), so it is the same instant everywhere in a render.
+    end = nowRef();
     if(end.getTime() < start.getTime()) end = new Date(start.getTime());
   } else {
     end = combineDateTime(e.date, e.endTime);
@@ -1026,10 +1043,14 @@ function isLateNight(e){
 // computation per render.
 let _standbysCache = null;
 let _standbysCacheKey = null;
+let _standbysCacheClock = null;
 function getStandbys(all){
-  if(_standbysCacheKey === all) return _standbysCache;
+  // Clock in the key for the same reason as the band cache: a standby's
+  // effective window expands over FDP/NFD, and an open task's end moves.
+  if(_standbysCacheKey === all && _standbysCacheClock === renderNow) return _standbysCache;
   const result = all.filter(e=>e.type==='STANDBY').map(e=>({ id:e.id, ...effectiveStandbyWindow(e, all) }));
   _standbysCacheKey = all;
+  _standbysCacheClock = renderNow;
   _standbysCache = result;
   return result;
 }
@@ -1048,10 +1069,14 @@ function standbyWindowFor(standby, all){
 // the entries array identity, like getStandbys above: every mutation site
 // reassigns `entries` rather than mutating it, so the same reference means the
 // same content.
-let _bandCacheKey = null, _bandCache = null;
+let _bandCacheKey = null, _bandCacheClock = null, _bandCache = null;
 function bandCacheFor(all){
-  if(_bandCacheKey !== all){
+  // Keyed on the render clock as well as the entries array: anything involving
+  // an open task moves with time, and the array does not change when it does, so
+  // keying on the array alone served a stale answer on the next pass.
+  if(_bandCacheKey !== all || _bandCacheClock !== renderNow){
     _bandCacheKey = all;
+    _bandCacheClock = renderNow;
     _bandCache = { restBands:null, standbyRest:new Map() };
   }
   return _bandCache;
@@ -1259,19 +1284,20 @@ function fdpGroupForTask(groups, entry){
 // whole FDP, not one task), and recomputing them inside those loops turned a
 // render into an O(n^2) job. `entries` is replaced wholesale on every change and
 // never mutated in place, so its identity is a safe cache key.
-let _fdpGroupsFor = null, _fdpGroupsCache = null;
+let _fdpGroupsFor = null, _fdpGroupsClock = null, _fdpGroupsCache = null;
 function fdpGroupsFor(all){
-  if(_fdpGroupsFor === all && _fdpGroupsCache) return _fdpGroupsCache;
+  if(_fdpGroupsFor === all && _fdpGroupsClock === renderNow && _fdpGroupsCache) return _fdpGroupsCache;
   _fdpGroupsFor = all;
+  _fdpGroupsClock = renderNow;
   _fdpGroupsCache = groupFDPTasks(all);
   return _fdpGroupsCache;
 }
 const _fdpStateCache = new WeakMap();
 function fdpStateFor(group, all){
   const hit = _fdpStateCache.get(group);
-  if(hit && hit.all === all) return hit.st;
+  if(hit && hit.all === all && hit.clock === renderNow) return hit.st;
   const st = computeFDPState(group, all, { open:false });
-  _fdpStateCache.set(group, { all, st });
+  _fdpStateCache.set(group, { all, clock: renderNow, st });
   return st;
 }
 // The whole-FDP state for the FDP a given task belongs to, or null.
@@ -1946,17 +1972,28 @@ function effectiveStandbyEnd(standbyEntry, all){
   const {start: sbStart, end: sbEnd} = entryDates(standbyEntry);
   let latestEnd = sbEnd;
   let sourceEntry = null;
+  let openEntry = null;          // a task in this standby that hasn't finished
+  const contributors = [];
   for(const e of all){
     if(e.type!=='FDP' && e.type!=='NFD') continue;
     const {start: es, end: ee} = entryDates(e);
     if(es.getTime() >= sbStart.getTime() && es.getTime() <= sbEnd.getTime()){
+      contributors.push(e);
+      if(isOpenEntry(e)) openEntry = e;
       if(ee.getTime() > latestEnd.getTime()){ latestEnd = ee; sourceEntry = e; }
     }
   }
-  return { latestEnd, sourceEntry };
+  return { latestEnd, sourceEntry, openEntry, contributors };
 }
 function standbyRestStatus(standbyEntry, all){
-  const { latestEnd, sourceEntry } = effectiveStandbyEnd(standbyEntry, all);
+  const { latestEnd, sourceEntry, openEntry, contributors } = effectiveStandbyEnd(standbyEntry, all);
+  // Rest cannot begin while the crew is still flying. With a task still open,
+  // the "end" of that task is the present moment, so the old code started the
+  // required rest at NOW and then reported the open task itself as a duty
+  // breaking into that rest — a conflict invented out of an unfinished shift.
+  // There is nothing to measure until the task is closed out: while it is open
+  // the FDP tile and the "must land by" marker are what matter.
+  if(openEntry) return null;
   // C5 — one formula. This used to look only at the FDP that ran past the
   // standby's own end, so a standby whose FDP finished inside it got the Table
   // 10 base with no add-ons, while the Off-Duty tile computed something else
@@ -1969,6 +2006,10 @@ function standbyRestStatus(standbyEntry, all){
   for(const e of all){
     if(String(e.id) === String(standbyEntry.id)) continue;
     if(!['STANDBY','FDP','NFD'].includes(e.type)) continue;
+    // A task that belongs to THIS standby is part of the duty the rest follows,
+    // never a duty that breaks into it. Without this the task that extended the
+    // standby could be reported as conflicting with the rest it created.
+    if(contributors.some(c => String(c.id) === String(e.id))) continue;
     const d = entryDates(e);
     // B10, as in odpStatus: a duty overlapping the standby's effective end was
     // skipped, so the band showed no conflict where there was no rest at all.
@@ -2051,7 +2092,7 @@ function statusGaugeHTML(label, state, valueText, sub){
 }
 
 function getStatusReference(){
-  const real = new Date();
+  const real = nowRef();
   const isRealToday = timelineCenterDate.toDateString() === real.toDateString();
   if(isRealToday) return { refDate: real, mode: 'live' };
   const centerIsPast = timelineCenterDate.getTime() < real.getTime();
@@ -2070,7 +2111,7 @@ function findAllOpenFDPs(all){
 }
 function openTaskBannerHTML(openEntry, all){
   const {start} = entryDates(openEntry);
-  const nowReal = new Date();
+  const nowReal = nowRef();
   // Same FDP model as the tile and the orange marker line, so all three agree:
   // the limit belongs to the whole FDP (every task since the last off-duty
   // period), not to this task on its own.
@@ -2142,7 +2183,7 @@ function multipleOpenWarningHTML(openList){
 /* ---------------- LIVE / CURRENT / PAST FDP tile ---------------- */
 // Today: is there a standby currently in progress, or one that's already ended?
 function findTodayStandbyContext(all){
-  const now = new Date();
+  const now = nowRef();
   const standbyEntries = all.filter(e => e.type==='STANDBY');
   const ongoing = standbyEntries.find(e => {
     const {start, end} = entryDates(e);
@@ -2215,7 +2256,7 @@ function standaloneFDPsForDay(dayDate, all){
 }
 function computeFDPTileState(all){
   const { mode } = getStatusReference();
-  const nowReal = new Date();
+  const nowReal = nowRef();
 
   // Which day/shift the tile is reporting on is unchanged (live: the standby
   // in progress, else one that finished today, else today's own tasks; past:
@@ -2293,7 +2334,7 @@ function flightTimeTileState(fdpTile){
 }
 
 function renderDashboard(){
-  const nowReal = new Date();
+  const nowReal = nowRef();
   document.getElementById('liveClock').textContent = nowReal.toLocaleString([], {dateStyle:'medium', timeStyle:'medium', hour12:false});
 
   // Open-task banner is always tied to real time, independent of Historic/Future navigation.
@@ -2574,7 +2615,7 @@ function buildLogRows(subset, all){
       const splitRest = st ? st.splitRest : 0;
       const multiTask = !!(group && group.tasks.length > 1);
       if(isOpenEntry(e)){
-        const openHrs = (new Date() - entryDates(e).start) / 3600000;
+        const openHrs = (nowRef() - entryDates(e).start) / 3600000;
         flags += openHrs > 14
           ? `<span class="badge badge-open-stale">OPEN ${fmtHrs(openHrs)}h ⚠</span>`
           : '<span class="badge badge-open">OPEN</span>';
@@ -2901,7 +2942,7 @@ function bandLabel(b){
 // Max-FDP / extension marker lines — computed once from the real current time
 // (or the ongoing FDP), then placed on whichever displayed day they fall on.
 function computeNowMarkers(all){
-  const nowReal = new Date();
+  const nowReal = nowRef();
   // Same FDP model the tile uses: the orange line is the end of the FDP a
   // tasking right now would fall into — which continues the current FDP if no
   // off-duty period has been taken since its last task, rather than assuming
@@ -2941,14 +2982,14 @@ function currentDutyContext(all){
   if(mode === 'future') return { standby:null, mode, dayDate:null };
   if(mode === 'live'){
     const { standby } = findTodayStandbyContext(all);
-    return { standby, mode, dayDate: new Date() };
+    return { standby, mode, dayDate: nowRef() };
   }
   const dayDate = new Date(timelineCenterDate);
   const { standby } = pastDayStandby(dayDate, all);
   return { standby, mode, dayDate };
 }
 function buildDayRowHTML(d, allMarkers, useDayNumberLabel){
-  const nowReal = new Date();
+  const nowReal = nowRef();
   const dayStart = new Date(d); dayStart.setHours(0,0,0,0);
   const dayEnd = new Date(dayStart.getTime() + 24*3600000);
   const dateStr = d.toLocaleDateString([], {weekday:'short', day:'2-digit', month:'short', year:'numeric'});
@@ -3072,10 +3113,17 @@ document.getElementById('tlDatePicker').addEventListener('change', (ev)=>{
 // sitting on Calendar view still paid for a full dashboard/log/timeline
 // recompute every cycle for a page that wasn't even displayed.
 function renderAll(){
-  if(currentPage === 'current'){
-    renderDashboard(); renderLog(); renderTimeline();
-  } else if(currentPage === 'calendar'){
-    renderCalendar();
+  // Freeze the clock for this pass (see nowRef) so every tile, band and marker
+  // agrees about when "now" is. Released in the finally, even if a render throws.
+  renderNow = Date.now();
+  try{
+    if(currentPage === 'current'){
+      renderDashboard(); renderLog(); renderTimeline();
+    } else if(currentPage === 'calendar'){
+      renderCalendar();
+    }
+  } finally {
+    renderNow = null;
   }
   // renderLog() rebuilds the row buttons from scratch, so the write gate has
   // to be re-applied after every render or freshly created Delete/Edit
