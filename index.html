@@ -589,6 +589,7 @@
       <summary>What this tool does &amp; doesn't do</summary>
       <ul>
         <li>Calculations follow the FDP, cumulative duty/flight time, LNO and standby limits set out in your FMS manual (based on CAO 48.1 Appendix 4B).</li>
+        <li><b>Forecast flight time</b> (from v0.69.0). Alongside the real 28-day and 365-day flight tiles, which only count flying you have logged, two forecast tiles show the figures Air Maestro prints with an asterisk for future days: actual flight time plus 5.0 hours for every rostered standby that has not started yet (a standby that already has a logged FDP is not forecast). The 5.0 hours is Air Maestro's own assumption, not a rule in OMY. The live view shows the position at the end of your next rostered shift's day, a future day shows that day, and a past day shows none.</li>
         <li><b>Hours are rounded the way Air Maestro rounds them</b> (from v0.68.0). Air Maestro is the official record and reporting is based on it, so every duty figure this tool shows or compares against a limit uses the same minutes-to-decimal conversion:
           <table style="margin:8px 0 6px 0; width:auto;">
             <tbody>
@@ -685,7 +686,7 @@ const firebaseConfig = {
              calculated (anything that can change a number on screen).
      PATCH — bug fixes and wording that don't change the rules.
    Set here only; the title and header read from it. */
-const APP_VERSION = '0.68.0';
+const APP_VERSION = '0.69.0';
 // Applied immediately rather than in init(), which only runs after sign-in —
 // otherwise the login screen shows a blank version tag.
 document.getElementById('versionTag').textContent = `v${APP_VERSION}`;
@@ -1563,6 +1564,31 @@ function sumDutyWindow(all, hoursBack, ref){
     if(en > s) sum += amHours((en-s)/3600000) * 0.5;
   }
   return amHours(sum);
+}
+// Forecast flight time (v0.69.0). Air Maestro assumes 5.0 h of flying for every
+// rostered standby that has not started yet, and adds that to the 28-day and
+// 365-day flight totals it shows for future days (marked with an asterisk).
+// The tool keeps its real-data tiles unchanged and shows this separately.
+const FORECAST_FLIGHT_PER_SHIFT = 5.0;
+function forecastShiftsBetween(all, afterTime, uptoTime, windowStart){
+  // Standbys not yet started (start after afterTime) that begin on or before
+  // uptoTime and inside the window. A standby that already holds a logged FDP
+  // is not forecast — its real flight time is counted by the actual total.
+  const out = [];
+  for(const e of all){
+    if(e.type!=='STANDBY') continue;
+    const st = entryDates(e).start.getTime();
+    if(st <= afterTime || st > uptoTime || st < windowStart) continue;
+    if(fdpsWithinStandby(e, all).length) continue;
+    out.push(e);
+  }
+  return out;
+}
+function projectedFlightTime(all, hoursBack, ref, nowReal){
+  const actual = sumFlightTimeWindow(all, hoursBack, ref);
+  const windowStart = ref.getTime() - hoursBack*3600000;
+  const shifts = forecastShiftsBetween(all, nowReal.getTime(), ref.getTime(), windowStart);
+  return { actual, shifts: shifts.length, total: actual + shifts.length*FORECAST_FLIGHT_PER_SHIFT };
 }
 function sumFlightTimeWindow(all, hoursBack, ref){
   const cutoff = ref.getTime() - hoursBack*3600000;
@@ -2596,6 +2622,30 @@ function renderDashboard(){
   // 365-day flight time vs 1000
   const flight365 = sumFlightTimeWindow(entries, 8760, now);
   html += gaugeHTML('Flight Time (365d, 10.14)', flight365, 1000, 'hrs', 'Limit per any 365 consecutive days', flight365>1000);
+
+  // Forecast flight time (v0.69.0) — extra tiles, the two above stay actual-only.
+  // Matches the 28D / 365D figures Air Maestro prints for future days: actual
+  // flying plus 5.0 h for each rostered standby still to come. Live view shows
+  // the position at the end of the next rostered shift's day; a future day shows
+  // that day; a past day has nothing to forecast.
+  if(mode !== 'historic'){
+    let fRef, fLabel;
+    if(mode === 'future'){
+      fRef = new Date(now); fLabel = fRef.toLocaleDateString('en-AU',{weekday:'short',day:'numeric',month:'short'});
+    } else {
+      const upcoming = entries.filter(e => e.type==='STANDBY' && entryDates(e).start.getTime() > nowReal.getTime() && !fdpsWithinStandby(e, entries).length)
+        .sort((a,b)=> entryDates(a).start - entryDates(b).start)[0];
+      if(upcoming){
+        fRef = new Date(entryDates(upcoming).start); fRef.setHours(23,59,59,999);
+        fLabel = fRef.toLocaleDateString('en-AU',{weekday:'short',day:'numeric',month:'short'});
+      } else { fRef = new Date(nowReal); fLabel = 'now'; }
+    }
+    const p28 = projectedFlightTime(entries, 672, fRef, nowReal);
+    const p365 = projectedFlightTime(entries, 8760, fRef, nowReal);
+    const fnote = (p) => `${fmtHrs(p.actual)}h actual + ${p.shifts} rostered shift${p.shifts===1?'':'s'} × ${fmtHrs(FORECAST_FLIGHT_PER_SHIFT)}h assumed · to end of ${fLabel} · as Air Maestro forecasts (*)`;
+    html += gaugeHTML('Forecast Flight Time (28d)*', p28.total, 100, 'hrs', fnote(p28), p28.total>100);
+    html += gaugeHTML('Forecast Flight Time (365d)*', p365.total, 1000, 'hrs', fnote(p365), p365.total>1000);
+  }
 
   // LNO count 7d vs 4
   html += gaugeHTML('Late Night Operations (7d, 10.13)', lno7, 4, 'FDPs', 'Max 4 late-night FDPs (>30 min between 2300–0530) per 168 hrs', lno7>4);
