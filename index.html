@@ -589,6 +589,17 @@
       <summary>What this tool does &amp; doesn't do</summary>
       <ul>
         <li>Calculations follow the FDP, cumulative duty/flight time, LNO and standby limits set out in your FMS manual (based on CAO 48.1 Appendix 4B).</li>
+        <li><b>Hours are rounded the way Air Maestro rounds them</b> (from v0.68.0). Air Maestro is the official record and reporting is based on it, so every duty figure this tool shows or compares against a limit uses the same minutes-to-decimal conversion:
+          <table style="margin:8px 0 6px 0; width:auto;">
+            <tbody>
+              <tr><td>0.0</td><td>1&ndash;2 min</td><td style="padding-left:18px;">0.4</td><td>21&ndash;26</td><td style="padding-left:18px;">0.8</td><td>45&ndash;50</td></tr>
+              <tr><td>0.1</td><td>3&ndash;8</td><td style="padding-left:18px;">0.5</td><td>27&ndash;32</td><td style="padding-left:18px;">0.9</td><td>51&ndash;56</td></tr>
+              <tr><td>0.2</td><td>9&ndash;14</td><td style="padding-left:18px;">0.6</td><td>33&ndash;38</td><td style="padding-left:18px;">1.0</td><td>57&ndash;62</td></tr>
+              <tr><td>0.3</td><td>15&ndash;20</td><td style="padding-left:18px;">0.7</td><td>39&ndash;44</td><td colspan="2"></td></tr>
+            </tbody>
+          </table>
+          That table is exactly &ldquo;round to the nearest 6 minutes, halves up&rdquo;. It applies to entry durations, the FDP total, cumulative duty, the rest owed and the rest taken. Before v0.68.0 the tool worked in exact decimals and rounded only for display, and its display disagreed with Air Maestro at 9, 21, 51 and 57 minutes (a 5h33m FDP read 5.5 instead of 5.6).</li>
+        <li><b>What rounding means for the limits.</b> Because the figures are rounded before they are compared, a duty of 12 hrs 2 min reads as 12.0 and attracts no over-12h addition to the rest owed, where exact arithmetic would have added 2 minutes' worth. Up to 3 minutes per entry is lost or gained this way, and cumulative totals can differ from exact arithmetic by a few tenths over a fortnight. This is deliberate: it keeps the tool and the official record in agreement. <b>Clock thresholds are NOT rounded</b> &mdash; whether a break reaches the 2 hours that earns split-duty credit, the 8 hours that ends an FDP, or the 36/72 hours of a recovery break is measured exactly, because those decide whether a rest period qualifies and rounding them would move a safety limit. So a 7 hr 58 min gap is still not an off-duty period, even though it would report as 8.0.</li>
         <li><b>How an FDP is measured (10.6, 10.8, 10.10):</b> each FDP entry is a <b>task</b>. The FDP itself starts at the first tasking and runs until the end of its last task, and every task stays in the same FDP until a real off-duty period separates them — standby is not off duty (1.3.1), and 10.10 requires an off-duty period after a call-out FDP before another FDP can start. So the time between tasks counts as FDP time, and a rest of 2+ hours extends the limit instead (10.8.1 caps "the FDP period including the rest period" at 16h; Tables 7 and 8 both measure the extended limit from the original start with the rest inside it). The limit is Table 6 by the first tasking time, plus split duty rest and any extension, less NFD in the 8 hours before the FDP started, capped at 16h.</li>
         <li>Split duty rest is calculated automatically: any gap of at least 2 consecutive hours between tasks qualifies, measured from the end of the task (which already includes the 30 min after landing, per 10.8.1). Standby counts as rest — it is free of all duties with sleeping accommodation — but NFD does not, so an NFD splits a gap into shorter pieces. It is not applied to an increased FDP, per 10.6.1. Per 10.8.1's second condition, the remaining portion after the most recent qualifying rest is also capped at a fresh Table 6 lookup at the resumption time.</li>
         <li>Mandatory rest bands on the Time Line now cover two separate triggers per 10.5, taking whichever is larger (not additive): a KSS score of 7 gives a fixed 3h rest; a KSS score of 8 or 9 gives the <b>full 10.12.3 rest</b> (Table 10 base plus the over-12h or extension component) per ruling R6 — the manual's own reference for KSS&gt;=8 ("Minimum ODP as per Table 4") is a documented error, since Table 4 is just the descriptive 1-9 scale with no ODP data. Separately, any FDP that actually needed an extension, was increased, or organically ran past 12h gets the full Table 10 formula (base + extension component), same as 10.12.3. Each band is anchored to the end of that day's duty — rest cannot start while dead head travel or a standby is still running (R13) — and flags a conflict if the containing standby is still logged as running into the rest window, or if anything else starts during it.</li>
@@ -674,7 +685,7 @@ const firebaseConfig = {
              calculated (anything that can change a number on screen).
      PATCH — bug fixes and wording that don't change the rules.
    Set here only; the title and header read from it. */
-const APP_VERSION = '0.67.2';
+const APP_VERSION = '0.68.0';
 // Applied immediately rather than in init(), which only runs after sign-in —
 // otherwise the login screen shows a blank version tag.
 document.getElementById('versionTag').textContent = `v${APP_VERSION}`;
@@ -946,9 +957,34 @@ function entryDates(e){
   }
   return {start, end};
 }
+// Air Maestro's minutes-to-decimal-hours conversion (ruling 17 Oct 2026).
+//
+//   0.0  1-2 min      0.4  21-26      0.8  45-50
+//   0.1  3-8          0.5  27-32      0.9  51-56
+//   0.2  9-14         0.6  33-38      1.0  57-62
+//   0.3  15-20        0.7  39-44
+//
+// That table is exactly "round to the nearest 6 minutes, halves up", so it is
+// computed rather than looked up. Air Maestro is the official record and the
+// reporting requirements are based on it, so every duty figure this tool
+// reports or compares against a limit is rounded the same way.
+//
+// Why `+ AM_EPSILON`: h*10 is the number of tenths, i.e. minutes/6. At the
+// halves (3, 9, 15, 21... minutes) that value should be exactly x.5, but in
+// binary floating point 0.15 is stored a hair BELOW 0.15, so 9 minutes gave
+// 1.4999999999999998 and rounded DOWN to 0.1 where Air Maestro gives 0.2. The
+// epsilon pushes a true half back over the line; it is far too small to affect
+// any genuine value. This is also why the old toFixed(1) display disagreed with
+// Air Maestro at 9, 21, 51 and 57 minutes.
+const AM_EPSILON = 1e-9;
+function amHours(h){
+  if(h === null || h === undefined || isNaN(h)) return h;
+  const sign = h < 0 ? -1 : 1;
+  return sign * Math.round(Math.abs(h)*10 + AM_EPSILON) / 10;
+}
 function durationHours(e){
   const {start,end} = entryDates(e);
-  return (end - start) / 3600000;
+  return amHours((end - start) / 3600000);
 }
 // Clock time, with the weekday added when it lands on a different date than
 // the thing it belongs to — an FDP that starts at 1800 can easily run out the
@@ -977,7 +1013,9 @@ function esc(v){
 }
 function fmtHrs(h){
   if(h === null || h === undefined || isNaN(h)) return '—';
-  return h.toFixed(1);
+  // Rounded the Air Maestro way, not with toFixed, so what is shown is always
+  // the figure the limit check actually used.
+  return amHours(h).toFixed(1);
 }
 function fmtLogDate(dateStr){
   // format as e.g. 30-Jul-26
@@ -1354,7 +1392,7 @@ function computeFDPState(group, all, opts){
   // Unchanged local convention: the 2100-0600 part of a rest is treated as
   // sleeping accommodation and credited in full (10.8.1); the rest of the day
   // as resting accommodation, at half and capped at 2h in total (10.8.2).
-  const splitRestRaw = nightHrs + Math.min(dayHrs/2, 2);
+  const splitRestRaw = amHours(nightHrs + Math.min(dayHrs/2, 2));
   const splitRest = increased ? 0 : splitRestRaw; // 10.6.1: no split credit on an increased FDP
   max += splitRest;
 
@@ -1388,7 +1426,7 @@ function computeFDPState(group, all, opts){
     const s = Math.max(d.start.getTime(), winStart), en = Math.min(d.end.getTime(), start.getTime());
     if(en > s) nfdHrs += (en - s)/3600000;
   }
-  const reduction = nfdHrs > 0 ? Math.max(0.5, nfdHrs) : 0;
+  const reduction = nfdHrs > 0 ? Math.max(0.5, amHours(nfdHrs)) : 0;
   max -= reduction;
 
   // 10.6 — a Day Shift must not run past 2200 without approval. It's a cap on
@@ -1416,18 +1454,20 @@ function computeFDPState(group, all, opts){
   //                 much FDP is left if a tasking comes in: the rest counts
   //                 towards the FDP unless it earns a credit (10.8.1).
   const valueEndMs = (open && asOf) ? Math.min(asOf.getTime(), lastTaskEnd) : lastTaskEnd;
-  const elapsedToNow = (open && asOf)
+  // Air Maestro rounding (amHours): these are the FDP figures reported and
+  // compared against the Table 6 limit, so they are held the way AM holds them.
+  const elapsedToNow = amHours((open && asOf)
     ? Math.max(asOf.getTime() - start.getTime(), valueEndMs - start.getTime())/3600000
-    : (lastTaskEnd - start.getTime())/3600000;
+    : (lastTaskEnd - start.getTime())/3600000);
   return {
     start, lastTaskEnd:new Date(lastTaskEnd), elapsedToNow,
-    value: (valueEndMs - start.getTime())/3600000,
+    value: amHours((valueEndMs - start.getTime())/3600000),
     max, maxEnd: new Date(start.getTime() + max*3600000),
     base, increased, splitRest, splitRestSuppressed: increased && splitRestRaw > 0,
     // The actual duration of the qualifying split-duty rest inside the FDP,
     // as distinct from splitRest (the credit it earns). 10.12.3 counts only
     // 50% of it when working out the rest owed afterwards (C8).
-    restHours: qualifying.reduce((sum,r)=> sum + (r.end-r.start)/3600000, 0),
+    restHours: amHours(qualifying.reduce((sum,r)=> sum + amHours((r.end-r.start)/3600000), 0)),
     ext, reduction, capped16, remainingPortionCapped, dayShift22Capped,
     group, open, taskInProgress: tasks.some(t => isOpenEntry(t.e)),
     taskCount: tasks.filter(t => !t.virtual).length,
@@ -1504,7 +1544,11 @@ function sumDutyWindow(all, hoursBack, ref){
     const en = Math.min(end.getTime(), ref.getTime());
     if(en > s) ivs.push({start:s, end:en});
   }
-  let sum = mergeIntervals(ivs).reduce((acc,iv)=> acc + (iv.end-iv.start)/3600000, 0);
+  // Each duty block is rounded before it is added, because Air Maestro holds a
+  // rounded value per entry and the cumulative total is the sum of those. Merged
+  // overlapping entries are rounded as one block, which avoids counting the same
+  // minutes twice.
+  let sum = mergeIntervals(ivs).reduce((acc,iv)=> acc + amHours((iv.end-iv.start)/3600000), 0);
   // Table 12 note: split-duty rest periods count at 50% toward cumulative duty.
   // Clip the rest period to the window too.
   for(const e of all){
@@ -1516,9 +1560,9 @@ function sumDutyWindow(all, hoursBack, ref){
     const restStart = restEnd - rest*3600000;
     const s = Math.max(restStart, cutoff);
     const en = Math.min(restEnd, ref.getTime());
-    if(en > s) sum += ((en-s)/3600000) * 0.5;
+    if(en > s) sum += amHours((en-s)/3600000) * 0.5;
   }
-  return sum;
+  return amHours(sum);
 }
 function sumFlightTimeWindow(all, hoursBack, ref){
   const cutoff = ref.getTime() - hoursBack*3600000;
@@ -1786,9 +1830,9 @@ function postFDPDutyHours(entry, all, restStart){
   let sum = 0;
   for(const iv of ivs){
     const s = Math.max(iv.start, entryEnd), en = Math.min(iv.end, stop);
-    if(en > s) sum += (en - s)/3600000;
+    if(en > s) sum += amHours((en - s)/3600000);
   }
-  return sum;
+  return amHours(sum);
 }
 function requiredODPHours(entry, all, effectiveEnd){
   if(!entry || (entry.type!=='FDP' && entry.type!=='STANDBY')) return 0;
@@ -1832,7 +1876,9 @@ function requiredODPHours(entry, all, effectiveEnd){
     const increasedHere = st && st.increased ? true : !!entry.increasedFDP;
     if(increasedHere) hours = Math.max(hours, 12);
   }
-  return hours;
+  // The requirement is built from AM-rounded inputs; round the result too so it
+  // lands on a tenth rather than carrying a float tail.
+  return amHours(hours);
 }
 
 // Returns {required, actual, conflictWith} for the rest owed after an entry,
@@ -1860,7 +1906,7 @@ function odpStatus(entry, all, effectiveEnd){
     if(nextAt === null || at < nextAt){ next = e; nextAt = at; }
   }
   if(!next) return { required, actual:null, conflictWith:null, restEnd };
-  const actual = (nextAt - end.getTime())/3600000;   // negative when it overlaps
+  const actual = amHours((nextAt - end.getTime())/3600000);   // negative when it overlaps
   return { required, actual, conflictWith: actual < required ? next : null, restEnd };
 }
 
@@ -2017,7 +2063,7 @@ function standbyRestStatus(standbyEntry, all){
     if(d.start.getTime() <= entryDates(standbyEntry).start.getTime()) continue;
     if(!next || d.start.getTime() < entryDates(next).start.getTime()) next = e;
   }
-  const actual = next ? (entryDates(next).start.getTime() - latestEnd.getTime())/3600000 : null;
+  const actual = next ? amHours((entryDates(next).start.getTime() - latestEnd.getTime())/3600000) : null;
   return {
     required: hours, restStart: latestEnd, restEnd,
     overrun: !!sourceEntry, actual,
@@ -2127,7 +2173,7 @@ function openTaskBannerHTML(openEntry, all){
   // prompt for when the aircraft needs to be on the ground, so it's the true
   // FDP max end time minus that 30-minute post-landing allowance.
   const mustLandBy = new Date(fdpMaxEnd.getTime() - 30*60000);
-  const remaining = (mustLandBy.getTime() - nowReal.getTime())/3600000;
+  const remaining = amHours((mustLandBy.getTime() - nowReal.getTime())/3600000);
   const deadlineStr = fmtMarkerTime(mustLandBy, nowReal);
   const fdpMaxEndStr = fmtMarkerTime(fdpMaxEnd, nowReal);
   const startStr = start.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', hour12:false});
@@ -2135,7 +2181,7 @@ function openTaskBannerHTML(openEntry, all){
   // How long THIS entry has literally been sitting open, regardless of FDP/max —
   // a data-hygiene check to catch a forgotten close-out, independent of whether
   // the calculated max/deadline logic would otherwise call it "OK".
-  const entryElapsed = (nowReal.getTime() - start.getTime()) / 3600000;
+  const entryElapsed = amHours((nowReal.getTime() - start.getTime()) / 3600000);
   const stale = entryElapsed > 14;
   let color, statusText;
   if(remaining <= 0){ color = 'var(--red)'; statusText = `Past must-land-by time by ${fmtHrs(Math.abs(remaining))}h`; }
