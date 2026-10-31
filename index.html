@@ -375,7 +375,7 @@
     <div class="stripe"></div>
     <div class="brand">
       <h1>Duty &amp; Fatigue Tracker <span class="version-tag" id="versionTag"></span></h1>
-      <p>OMY - Fatigue Management System v0.9 (CAO 48.1 Appendix 4B) — personal reference tool</p>
+      <p>OMY - Fatigue Management System v1.1 (CAO 48.1 Appendix 4B) — personal reference tool</p>
     </div>
   </div>
   <div style="display:flex; align-items:center; gap:16px;">
@@ -589,7 +589,7 @@
     <details class="note panel" style="margin-top:20px;">
       <summary>What this tool does &amp; doesn't do</summary>
       <ul>
-        <li>Calculations follow the FDP, cumulative duty/flight time, LNO and standby limits set out in your FMS manual (based on CAO 48.1 Appendix 4B). From v0.71.0 the tool tracks <b>OMY FMS v1.1</b> (approved 27/10/2026); up to v0.70.1 it tracked v0.9. Clause and table references throughout the app use v1.1 numbering. v1.1 renumbered every table: Max FDP Limits is now Table 4 (was 6), ODP after completing an FDP is Table 9 (was 10/11), ODP before commencing is Table 8 (was 9), split duty sleeping and resting are Tables 5 and 6 (were 7 and 8), the cumulative table is Table 9 (was 12) and the KSS scale is Table 2 (was 4). Late Night Operations moved from 10.13 into 10.9, and cumulative duty and flight time from 10.14 into 10.13.</li>
+        <li>Calculations follow the FDP, cumulative duty/flight time, LNO and standby limits set out in your FMS manual (based on CAO 48.1 Appendix 4B). From v1.0.0 the tool tracks <b>OMY FMS v1.1</b> (approved 27/10/2026); up to v0.70.1 it tracked v0.9. Clause and table references throughout the app use v1.1 numbering. v1.1 renumbered every table: Max FDP Limits is now Table 4 (was 6), ODP after completing an FDP is Table 9 (was 10/11), ODP before commencing is Table 8 (was 9), split duty sleeping and resting are Tables 5 and 6 (were 7 and 8), the cumulative table is Table 9 (was 12) and the KSS scale is Table 2 (was 4). Late Night Operations moved from 10.13 into 10.9, and cumulative duty and flight time from 10.14 into 10.13.</li>
         <li><b>Hours are rounded the way Air Maestro rounds them</b> (from v0.68.0). Air Maestro is the official record and reporting is based on it, so every duty figure this tool shows or compares against a limit uses the same minutes-to-decimal conversion:
           <table style="margin:8px 0 6px 0; width:auto;">
             <tbody>
@@ -618,8 +618,8 @@
         <li><b>Preceding Rest (10.12.2)</b> checks whether at least one qualifying off-duty period occurred somewhere in the trailing 14 days (36h including 2 local nights, Table 8) or, failing that, the trailing 21 days (72h including 3 local nights). Live mode checks as if you were starting a new duty right now. Historic and Future modes both check against whatever duty <b>starts</b> on the displayed day — a standby if one exists, otherwise the earliest FDP (e.g. a training/sim day logged without a standby) — if neither has been entered for that day, the check simply doesn't run, since there's nothing to anchor it to.</li>
         <li><b>Cumulative Fatigue Recovery (10.9 / 10.12.1) &mdash; changed in v1.1.</b> v0.9 required the break after <b>more than</b> three late night operations, which ruling R7 read as triggering at the 4th. v1.1 changed 10.9 to <b>three (3) or more</b>, so the break is now owed at the <b>3rd</b> LNO in the trailing 7 days, and it must fall <b>after that 3rd LNO</b>, before any further duty. The 7-day cumulative duty cap also drops to 40 hrs at 3 LNOs, applied independently by the Cumulative Duty (7d) gauge. A <b>4th</b> LNO taken after the break is permitted and owes no second break &mdash; the obligation is discharged once per 7 days &mdash; but it exhausts the four-per-7-days cap in 10.9, so any standby still covering 2300&ndash;0530 inside that window is badged <b>LNO CAP</b> in the Duty Log and raises an LNO Cap Exhausted tile. An increased FDP in the window triggers the same 36h break (R11, and now 10.6.1 in v1.1, which attaches that requirement to applying the increased limit where v0.9 attached it to taking an extension); where both apply the break must follow whichever came later. A qualifying break earlier in the same 7 days does not count.</li>
         <li>The <b>Duty</b> tile was removed in v0.67.0. Its maximum was a local convention rather than a rule &mdash; Table 4 is defined against FDP start time and the tile applied it to the standby start &mdash; which made it the one gauge on the dashboard measured against a number OMY does not set. Cumulative duty against the real 10.13 limits is still shown, and hours per shift are in the Duty Log.</li>
-        <li><b>Where a stand-down starts (10.5) &mdash; corrected in v0.71.0.</b> A KSS score of 7 or more recorded at either the start or end of an FDP puts a mandatory rest band above the line on the Time Line, and it now begins <b>when work stops</b>, at the end of that task, rather than at the end of the containing standby. 10.5 requires the aircraft to be taken offline until the relevant stand-down period is achieved, so the stand-down runs from the moment fatigue is identified; a standby that happens still to be logged cannot postpone it, because 10.2 is explicit that being on standby means being free of all duties &mdash; standby is availability, not duty. Up to v0.70.1 the band was anchored to the end of the standby, which put it in the wrong place and meant a task taken inside the real window raised no conflict at all. Non-flying duty logged straight after the task &mdash; dead head travel, shift admin &mdash; does still push the start out, because that is real duty (R13). A later <b>FDP</b> does not: once fatigue has been identified no further task is lawful, so any FDP, NFD or standby starting inside the window is flagged as a conflict and named. The post-FDP rest owed under 10.12.3 keeps its anchor at the end of the standby, because 10.2 requires that rest to be taken before returning to standby or starting a new FDP.</li>
-        <li><b>The 30-minute NFD minimum (10.3) is applied at entry, not in the calculation</b> (from v0.71.0). 10.3 says that where a period of NFD is less than 30 minutes, 30 minutes is subtracted from the maximum allowable FDP. That floor exists so a short NFD still consumes a sensible block of duty; it is not meant to inflate the figure where real duty already occupies the time. Air Maestro is driven off the times entered, and the floor is applied when the entry is made &mdash; logging a 15-minute NFD as a 30-minute block &mdash; so the tool now reduces the FDP by the time <b>as entered</b>, and the two stay in step. A 15-minute NFD entered as 15 minutes reduces the limit by 0.3h, not 0.5h. <b>Worth knowing:</b> a genuine sub-30-minute NFD entered without that padding, with no duty following inside the window, will reduce the FDP by less than 10.3 strictly requires. Up to v0.70.1 the tool applied the floor itself, which overstated the reduction wherever an FDP started inside the padded block.</li>
+        <li><b>Where a stand-down starts (10.5) &mdash; corrected in v1.0.0.</b> A KSS score of 7 or more recorded at either the start or end of an FDP puts a mandatory rest band above the line on the Time Line, and it now begins <b>when work stops</b>, at the end of that task, rather than at the end of the containing standby. 10.5 requires the aircraft to be taken offline until the relevant stand-down period is achieved, so the stand-down runs from the moment fatigue is identified; a standby that happens still to be logged cannot postpone it, because 10.2 is explicit that being on standby means being free of all duties &mdash; standby is availability, not duty. Up to v0.70.1 the band was anchored to the end of the standby, which put it in the wrong place and meant a task taken inside the real window raised no conflict at all. Non-flying duty logged straight after the task &mdash; dead head travel, shift admin &mdash; does still push the start out, because that is real duty (R13). A later <b>FDP</b> does not: once fatigue has been identified no further task is lawful, so any FDP, NFD or standby starting inside the window is flagged as a conflict and named. The post-FDP rest owed under 10.12.3 keeps its anchor at the end of the standby, because 10.2 requires that rest to be taken before returning to standby or starting a new FDP.</li>
+        <li><b>The 30-minute NFD minimum (10.3) is applied at entry, not in the calculation</b> (from v1.0.0). 10.3 says that where a period of NFD is less than 30 minutes, 30 minutes is subtracted from the maximum allowable FDP. That floor exists so a short NFD still consumes a sensible block of duty; it is not meant to inflate the figure where real duty already occupies the time. Air Maestro is driven off the times entered, and the floor is applied when the entry is made &mdash; logging a 15-minute NFD as a 30-minute block &mdash; so the tool now reduces the FDP by the time <b>as entered</b>, and the two stay in step. A 15-minute NFD entered as 15 minutes reduces the limit by 0.3h, not 0.5h. <b>Worth knowing:</b> a genuine sub-30-minute NFD entered without that padding, with no duty following inside the window, will reduce the FDP by less than 10.3 strictly requires. Up to v0.70.1 the tool applied the floor itself, which overstated the reduction wherever an FDP started inside the padded block.</li>
         <li><b>Rest either side of an increased FDP (10.6.1) &mdash; new in v1.1.</b> v0.9 required a 12-hour off-duty period only <b>after</b> an increased FDP, and ruling R3 left the app at that pending a change in the manual. v1.1 is that change: 12 hours is now required <b>both before and after</b>. The after-side is carried by the post-FDP rest tiles and the 12-hour floor on the rest owed; the before-side has its own Rest Before Increased FDP tile, reporting on the most recent increased FDP in the trailing 7 days. An increased FDP with no prior duty logged at all counts as satisfied, not failed.</li>
         <li><b>The increased limit is a rostering action (10.6) &mdash; new in v1.1.</b> v1.1 says the increased (red) limits in Table 4 may be applied <b>prior to shift commencement</b>, via a roster change agreed with the member and the SBP/SACO, and that once duty has commenced an increase in FDP is not achieved by raising the duty limit but only by a split duty rest period or an extension. Ticking the increased-limit box on an FDP that has already started therefore raises a confirmation prompt. It is a warning, not a block: the record may be a retrospective entry of an FDP that was properly rostered to the increased limit beforehand.</li>
         <li><b>An extension cannot exceed the cumulative limits (10.13) &mdash; new in v1.1.</b> v1.1 adds that an FCM extending an FDP via an extension cannot exceed the cumulative limits. The Extension vs Cumulative tile checks the most recent extended FDP in the trailing 7 days against the 7-day (40/60h) and 14-day (100h) caps and flags it where the extension carries duty past either, independently of whether the extension itself was within the permitted hours.</li>
@@ -690,7 +690,7 @@ const firebaseConfig = {
              calculated (anything that can change a number on screen).
      PATCH — bug fixes and wording that don't change the rules.
    Set here only; the title and header read from it. */
-const APP_VERSION = '0.71.0';
+const APP_VERSION = '1.0.0';
 // Applied immediately rather than in init(), which only runs after sign-in —
 // otherwise the login screen shows a blank version tag.
 document.getElementById('versionTag').textContent = `v${APP_VERSION}`;
@@ -1866,6 +1866,20 @@ function extensionCumulativeCheck(entry, all, ref){
   if(duty7 > cap7) breaches.push({ window:'7-day', actual:amHours(duty7), cap:cap7 });
   if(duty14 > 100) breaches.push({ window:'14-day', actual:amHours(duty14), cap:100 });
   return breaches.length ? { breached:true, breaches, extHrs } : { breached:false, extHrs };
+}
+
+// The content signature of an entry: the same duty logged twice produces the
+// same string. Used by Import Backup to skip a duty re-imported under a fresh
+// ID, and by the manual Add Entry button to warn before creating a duplicate.
+// Both share one definition so the two paths cannot drift apart — the double
+// 1800-1900 NFD that produced a doubled 10.3 reduction in v0.70.0 got in
+// through manual Add precisely because only the importer checked.
+function entrySignature(e){
+  return `${e.type}|${e.date}|${e.startTime}|${e.endTime}`;
+}
+function findDuplicateEntry(candidate, all, excludeId){
+  const sig = entrySignature(candidate);
+  return all.find(e => String(e.id) !== String(excludeId) && entrySignature(e) === sig) || null;
 }
 
 function lastOfType(all, type, asOf){
@@ -3822,6 +3836,27 @@ document.getElementById('addBtn').addEventListener('click', async ()=>{
     entry.extType = document.getElementById('f-extType').value;
     entry.extHours = document.getElementById('f-extHours').value || 0;
   }
+  // Duplicate guard. Import Backup has always skipped an entry matching an
+  // existing type/date/start/end; manual Add did not, which is how the same
+  // 1800-1900 NFD was logged twice and doubled its 10.3 reduction. Two entries
+  // of the same type over the same period cannot both be real duty — you can
+  // only be doing one thing at a time — so this warns before creating one.
+  // Warned rather than blocked, so a genuine correction is never trapped.
+  {
+    const dup = findDuplicateEntry(entry, entries, editingId);
+    if(dup){
+      const when = openTask ? `${entry.startTime} (still in progress)` : `${entry.startTime}–${entry.endTime}`;
+      const note = (dup.notes || '').trim();
+      const ok = confirm(
+        `A ${entry.type} is already logged for ${entry.date} ${when}`
+        + (note ? ` — "${note}"` : '') + '.\n\n'
+        + 'Two entries of the same type over the same period will both be counted, which '
+        + 'overstates duty and can double an NFD reduction against your FDP limit.\n\n'
+        + 'Cancel to go back, or OK to add it anyway.');
+      if(!ok) return;
+    }
+  }
+
   // 10.6 (v1.1): "The increased limits that are shown in table 4 in red may be
   // applied prior to shift commencement... Once the member commences duty,
   // increases in FDP are not achieved through an increase in the duty limit but
@@ -4008,7 +4043,7 @@ document.getElementById('importFile').addEventListener('change', async (ev)=>{
     const existingIds = new Set(entries.map(e=>String(e.id)));
     // Content signature catches the same duty re-imported under a fresh ID
     // (e.g. re-exported from a different session), not just an exact ID match.
-    const sig = e => `${e.type}|${e.date}|${e.startTime}|${e.endTime}`;
+    const sig = entrySignature;
     const existingSignatures = new Set(entries.map(sig));
     let added = 0, skippedId = 0, skippedContent = 0;
     const toAdd = [], rejected = [];
