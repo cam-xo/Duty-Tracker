@@ -177,6 +177,7 @@
   .badge-ext{ background:rgba(229,83,75,0.18); color:var(--red); }
   .badge-split{ background:rgba(63,191,143,0.18); color:var(--green); }
   .badge-kss7{ background:rgba(255,126,219,0.18); color:var(--tl-kssrest); }
+  .badge-lnocap{ background:rgba(240,90,90,0.18); color:var(--red); }
   .badge-open{ background:rgba(143,227,176,0.18); color:var(--tl-nfd); }
   .badge-open-stale{ background:rgba(229,83,75,0.22); color:var(--red); }
   .status-ok{ color:var(--green); font-weight:700; }
@@ -496,7 +497,7 @@
             </select>
           </div>
         </div>
-        <div class="hint" style="margin-top:-4px; margin-bottom:12px;">A KSS of 7 at either point adds a mandatory 3-hour rest after this task on the Time Line (10.5).</div>
+        <div class="hint" style="margin-top:-4px; margin-bottom:12px;">A KSS of 7 at either point adds a mandatory 3-hour rest from the end of this task on the Time Line (10.5). A KSS of 8 or more is a stand-down from operations and attracts the full Table 9 off-duty period instead.</div>
         <div class="field">
           <label><input type="checkbox" id="f-increased" style="width:auto; margin-right:6px;" />Using increased FDP limit (max 2 per 7 days)</label>
         </div>
@@ -588,7 +589,7 @@
     <details class="note panel" style="margin-top:20px;">
       <summary>What this tool does &amp; doesn't do</summary>
       <ul>
-        <li>Calculations follow the FDP, cumulative duty/flight time, LNO and standby limits set out in your FMS manual (based on CAO 48.1 Appendix 4B).</li>
+        <li>Calculations follow the FDP, cumulative duty/flight time, LNO and standby limits set out in your FMS manual (based on CAO 48.1 Appendix 4B). From v0.71.0 the tool tracks <b>OMY FMS v1.1</b> (approved 27/10/2026); up to v0.70.1 it tracked v0.9. Clause and table references throughout the app use v1.1 numbering. v1.1 renumbered every table: Max FDP Limits is now Table 4 (was 6), ODP after completing an FDP is Table 9 (was 10/11), ODP before commencing is Table 8 (was 9), split duty sleeping and resting are Tables 5 and 6 (were 7 and 8), the cumulative table is Table 9 (was 12) and the KSS scale is Table 2 (was 4). Late Night Operations moved from 10.13 into 10.9, and cumulative duty and flight time from 10.14 into 10.13.</li>
         <li><b>Hours are rounded the way Air Maestro rounds them</b> (from v0.68.0). Air Maestro is the official record and reporting is based on it, so every duty figure this tool shows or compares against a limit uses the same minutes-to-decimal conversion:
           <table style="margin:8px 0 6px 0; width:auto;">
             <tbody>
@@ -600,24 +601,28 @@
           </table>
           That table is exactly &ldquo;round to the nearest 6 minutes, halves up&rdquo;. It applies to entry durations, the FDP total, cumulative duty, the rest owed and the rest taken. Before v0.68.0 the tool worked in exact decimals and rounded only for display, and its display disagreed with Air Maestro at 9, 21, 51 and 57 minutes (a 5h33m FDP read 5.5 instead of 5.6).</li>
         <li><b>What rounding means for the limits.</b> Because the figures are rounded before they are compared, a duty of 12 hrs 2 min reads as 12.0 and attracts no over-12h addition to the rest owed, where exact arithmetic would have added 2 minutes' worth. Up to 3 minutes per entry is lost or gained this way, and cumulative totals can differ from exact arithmetic by a few tenths over a fortnight. This is deliberate: it keeps the tool and the official record in agreement. <b>Clock thresholds are NOT rounded</b> &mdash; whether a break reaches the 2 hours that earns split-duty credit, the 8 hours that ends an FDP, or the 36/72 hours of a recovery break is measured exactly, because those decide whether a rest period qualifies and rounding them would move a safety limit. So a 7 hr 58 min gap is still not an off-duty period, even though it would report as 8.0.</li>
-        <li><b>How an FDP is measured (10.6, 10.8, 10.10):</b> each FDP entry is a <b>task</b>. The FDP itself starts at the first tasking and runs until the end of its last task, and every task stays in the same FDP until a real off-duty period separates them — standby is not off duty (1.3.1), and 10.10 requires an off-duty period after a call-out FDP before another FDP can start. So the time between tasks counts as FDP time, and a rest of 2+ hours extends the limit instead (10.8.1 caps "the FDP period including the rest period" at 16h; Tables 7 and 8 both measure the extended limit from the original start with the rest inside it). The limit is Table 6 by the first tasking time, plus split duty rest and any extension, less NFD in the 8 hours before the FDP started, capped at 16h.</li>
-        <li>Split duty rest is calculated automatically: any gap of at least 2 consecutive hours between tasks qualifies, measured from the end of the task (which already includes the 30 min after landing, per 10.8.1). Standby counts as rest — it is free of all duties with sleeping accommodation — but NFD does not, so an NFD splits a gap into shorter pieces. It is not applied to an increased FDP, per 10.6.1. Per 10.8.1's second condition, the remaining portion after the most recent qualifying rest is also capped at a fresh Table 6 lookup at the resumption time.</li>
-        <li>Mandatory rest bands on the Time Line now cover two separate triggers per 10.5, taking whichever is larger (not additive): a KSS score of 7 gives a fixed 3h rest; a KSS score of 8 or 9 gives the <b>full 10.12.3 rest</b> (Table 10 base plus the over-12h or extension component) per ruling R6 — the manual's own reference for KSS&gt;=8 ("Minimum ODP as per Table 4") is a documented error, since Table 4 is just the descriptive 1-9 scale with no ODP data. Separately, any FDP that actually needed an extension, was increased, or organically ran past 12h gets the full Table 10 formula (base + extension component), same as 10.12.3. Each band is anchored to the end of that day's duty — rest cannot start while dead head travel or a standby is still running (R13) — and flags a conflict if the containing standby is still logged as running into the rest window, or if anything else starts during it.</li>
-        <li><b>Conservative assumption:</b> within that rest gap, only the portion falling between 2100–0600 is treated as genuine sleeping accommodation (full credit, per Table 7) — it's unrealistic to assume someone actually sleeps during the day even though sleeping accommodation is available. The portion falling 0600–2100 is treated as resting accommodation only (half credit, capped at 2 hours total, per Table 8). The full raw gap (unweighted) is still what counts at 50% toward cumulative duty per Table 12.</li>
-        <li><b>Table 10 (10.12.3) is read by where the rest falls</b>, not by when duty finished &mdash; the table's middle column is headed "Off Duty Time Period" (ruling R2). A day shift finishing in the day or evening has its rest through the night, so 8 hrs applies; a night shift finishing in the early hours has to sleep through the following day, so 10 hrs applies. In the app: rest starting 0600&ndash;2259 &rarr; 8 hrs, rest starting 2300&ndash;0559 &rarr; 10 hrs. This is the reverse of versions up to v0.61.0, which read the same clock times off the shift-completed column.</li>
+        <li><b>How an FDP is measured (10.6, 10.8, 10.10):</b> each FDP entry is a <b>task</b>. The FDP itself starts at the first tasking and runs until the end of its last task, and every task stays in the same FDP until a real off-duty period separates them — standby is not off duty (1.3.1), and 10.10 requires an off-duty period after a call-out FDP before another FDP can start. So the time between tasks counts as FDP time, and a rest of 2+ hours extends the limit instead (10.8.1 caps "the FDP period including the rest period" at 16h; Tables 7 and 8 both measure the extended limit from the original start with the rest inside it). The limit is Table 4 by the first tasking time, plus split duty rest and any extension, less NFD in the 8 hours before the FDP started, capped at 16h.</li>
+        <li>Split duty rest is calculated automatically: any gap of at least 2 consecutive hours between tasks qualifies, measured from the end of the task (which already includes the 30 min after landing, per 10.8.1). Standby counts as rest — it is free of all duties with sleeping accommodation — but NFD does not, so an NFD splits a gap into shorter pieces. It is not applied to an increased FDP, per 10.6.1. Per 10.8.1's second condition, the remaining portion after the most recent qualifying rest is also capped at a fresh Table 4 lookup at the resumption time.</li>
+        <li>Mandatory rest bands on the Time Line cover two separate triggers per 10.5, taking whichever reaches furthest (not additive): a KSS score of 7 gives a fixed 3h rest at suitable sleeping accommodation; a KSS score of 8 or more gives the <b>full 10.12.3 rest</b> (Table 9 base plus the add-ons). v0.9 cited the KSS scale itself for the 8-or-greater case, which carries no ODP figures and had to be worked around by ruling R6; <b>v1.1 corrected that reference to Table 9</b>, so the app now follows the manual directly. v1.1 also added that at KSS 8 or more the crew member is no longer fit for operations, all operations are to cease, a diversion to the nearest suitable landing area is to occur if in flight, and a Fatigue Safety Report is to be lodged on Air Maestro (Safety Reports &rarr; Lodge New Safety Report &rarr; Report Type: RWFMS Fatigue). Separately, any FDP that needed an extension, was increased, or organically ran past 12h gets the full Table 9 formula, same as 10.12.3.</li>
+        <li><b>Conservative assumption:</b> within that rest gap, only the portion falling between 2100–0600 is treated as genuine sleeping accommodation (full credit, per Table 5) — it's unrealistic to assume someone actually sleeps during the day even though sleeping accommodation is available. The portion falling 0600–2100 is treated as resting accommodation only (half credit, capped at 2 hours total, per Table 6). The full raw gap (unweighted) is still what counts at 50% toward cumulative duty per Table 9.</li>
+        <li><b>Table 9 (10.12.3) is read by where the rest falls</b>, not by when duty finished &mdash; the table's middle column is headed "Off Duty Time Period" (ruling R2). A day shift finishing in the day or evening has its rest through the night, so 8 hrs applies; a night shift finishing in the early hours has to sleep through the following day, so 10 hrs applies. In the app: rest starting 0600&ndash;2259 &rarr; 8 hrs, rest starting 2300&ndash;0559 &rarr; 10 hrs. This is the reverse of versions up to v0.61.0, which read the same clock times off the shift-completed column.</li>
         <li>The 40-vs-60-hour 7-day duty cap checks for a 36+ hour off-duty gap that fully contains at least 2 local nights (an 8+ hour break covering 2200–0500), based on your rosters being in a single time zone.</li>
-        <li>Late Night Operations are counted once per local night regardless of how many FDPs occurred, per the note under 10.13.</li>
+        <li>Late Night Operations are counted once per local night regardless of how many FDPs occurred, per the note under 10.9.</li>
         <li>Cumulative duty windows clip entries to the window boundary and merge overlapping entries, so a duty straddling the 7- or 14-day cutoff counts only for the portion inside it.</li>
-        <li>The Time Line's "required rest" band only follows a rostered Standby period, anchored at the later of the standby's own end or the end of any NFD/FDP that started during it (Table 10 base &mdash; 8h where the rest starts 0600&ndash;2259, 10h where it starts 2300&ndash;0559, per ruling R2 &mdash; plus extra for an FDP running over 12 hrs, using an extension, or an increased FDP's 12-hour floor). Shortfalls show as a red hatched "rest conflict" band. Standalone FDPs with no enclosing standby don't get a rest band on the Time Line.</li>
-        <li><b>Flight Time (10.6)</b> sums the flight time of every task in the FDP the tile above is reporting on, against the real per-FDP limit — 10 hrs single pilot, 12 hrs multi-crew. It replaced the separate "last FDP" and "Shift" tiles in v0.64.0: under the FDP model every task in a shift belongs to one FDP, so both were measuring the same hours, and the per-shift one was labelled a reference figure only because it predated the model. Going over this limit is a real breach of 10.6, not a visual reference. Finished tasks with no flight time recorded are flagged in the tile, since they silently understate the total.</li>
-        <li>The rest owed after an FDP (10.12.3) is worked out across the <b>whole FDP</b>, not the last task in it, and only <b>50%</b> of any split-duty rest inside the FDP counts towards the over-12h component, per 10.12.3. Where the duty being assessed is a standby, the requirement is taken from the FDPs flown inside it, so an increased FDP's 12-hour floor and any extension add-on are applied rather than the Table 10 base alone (findings C5 and C8).</li>
+        <li>The Time Line's "required rest" band only follows a rostered Standby period, anchored at the later of the standby's own end or the end of any NFD/FDP that started during it (Table 9 base &mdash; 8h where the rest starts 0600&ndash;2259, 10h where it starts 2300&ndash;0559, per ruling R2 &mdash; plus extra for an FDP running over 12 hrs, using an extension, or an increased FDP's 12-hour floor). Shortfalls show as a red hatched "rest conflict" band. Standalone FDPs with no enclosing standby don't get a rest band on the Time Line.</li>
+        <li><b>Flight Time (10.6)</b> sums the flight time of every task in the FDP the tile above is reporting on, against the real per-FDP limit — 10 hrs single pilot, 12 hrs multi-pilot. It replaced the separate "last FDP" and "Shift" tiles in v0.64.0: under the FDP model every task in a shift belongs to one FDP, so both were measuring the same hours, and the per-shift one was labelled a reference figure only because it predated the model. Going over this limit is a real breach of 10.6, not a visual reference. Finished tasks with no flight time recorded are flagged in the tile, since they silently understate the total.</li>
+        <li><b>The rest owed after an FDP (10.12.3) &mdash; rewritten for v1.1.</b> It is still worked out across the <b>whole FDP</b>, not the last task in it. What changed is the add-ons. v0.9 read: the amount of displacement time, and <i>either</i> the amount the FDP exceeded 12 hours <i>or</i> 1 hour for every 30 minutes extended past the limit &mdash; with a separate rule discounting 50% of the <b>split duty rest period</b>. v1.1 replaces that with a list carrying no either/or: two-pilot operations, or <b>resting</b> accommodation used to extend via split duty, add the <b>full</b> amount the FDP exceeded 12 hours; <b>sleeping</b> accommodation used to extend via split duty adds <b>50% of that over-12 amount</b>; an FDP increased by an extension adds 1 hour for every 30 minutes (or part) past the limit; and a change of time zone adds the displacement time (always nil here, per ruling R4). Two consequences: the 50% now applies to the over-12 amount rather than to the rest period, and the over-12 and extension add-ons now <b>stack</b> where v0.9 took one or the other. Accommodation type is inferred the same way the split-duty credit infers it &mdash; a qualifying rest wholly inside 2100&ndash;0600 counts as sleeping accommodation; any resting-accommodation portion in the mix, or a two-pilot operation, puts it under the full-amount bullet. <b>Air Maestro&rsquo;s own treatment of the stacking is still to be confirmed</b>; stacking is the literal reading of v1.1 and the more conservative one. Where the duty being assessed is a standby, the requirement is taken from the FDPs flown inside it, so an increased FDP&rsquo;s 12-hour floor and any extension add-on are applied rather than the Table 9 base alone (findings C5 and C8).</li>
         <li>Whether duty has stopped &mdash; and so whether rest has started &mdash; is decided by how long the gap is, not by the calendar date. Duty keeps running while the free gap is shorter than 8 hrs (the shortest possible minimum ODP), so dead-head travel an hour after landing is the same duty period, duty continuing past midnight still counts as one, and two genuinely separate duties on the same date are treated as two (finding C6).</li>
         <li>A rest requirement can only be satisfied by a break that has actually happened. A break rostered but not yet taken never counts, and a break still in progress counts for the hours elapsed so far &mdash; which is what lets Preceding Rest read "Satisfied" during a long stretch off with nothing rostered after it (findings C3 and C11). Gaps are also measured around merged duty, so an FDP logged inside a standby cannot create a gap that was never free.</li>
         <li>The Off-Duty Period tile in Live Status checks the rest taken <b>before</b> the most recent FDP or standby as of the day being viewed (not just standby periods, unlike the Time Line's per-standby view) — the two are worth reading together rather than expecting them to always agree. It only ever looks at the gap immediately preceding what's most recent for the selected day; it does not surface older unresolved shortfalls from further back in your history.</li>
-        <li><b>Preceding Rest (10.12.2)</b> checks whether at least one qualifying off-duty period occurred somewhere in the trailing 14 days (36h including 2 local nights, Table 9) or, failing that, the trailing 21 days (72h including 3 local nights). Live mode checks as if you were starting a new duty right now. Historic and Future modes both check against whatever duty <b>starts</b> on the displayed day — a standby if one exists, otherwise the earliest FDP (e.g. a training/sim day logged without a standby) — if neither has been entered for that day, the check simply doesn't run, since there's nothing to anchor it to.</li>
-        <li><b>Cumulative Fatigue Recovery (10.12.1)</b> follows ruling R7, which reads 10.9/10.12.1 as two separate protections. Exactly <b>3</b> late night operations in the trailing 7 days owes no recovery break — the protection at that level is the 7-day cumulative duty cap dropping to 40 hrs, applied by the Cumulative Duty (7d) gauge. <b>More than 3</b> requires 36 hrs off duty over 2 local nights, and that break must fall <b>after the 4th LNO</b>, before any further duty. An increased FDP in the window triggers the same break (R11), which must then follow the increased FDP; where both apply the break must follow whichever came later. A qualifying break earlier in the same 7 days no longer counts.</li>
-        <li>The <b>Duty</b> tile was removed in v0.67.0. Its maximum was a local convention rather than a rule &mdash; Table 6 is defined against FDP start time and the tile applied it to the standby start &mdash; which made it the one gauge on the dashboard measured against a number OMY does not set. Cumulative duty against the real 10.14 limits is still shown, and hours per shift are in the Duty Log.</li>
-        <li>A KSS score of 7 recorded at either the start or end of an FDP adds a mandatory 3-hour rest (10.5) shown above the line on the Time Line, immediately after that task. Any NFD or FDP starting during that window is flagged as a conflict, same as the other rest-conflict bands.</li>
+        <li><b>Preceding Rest (10.12.2)</b> checks whether at least one qualifying off-duty period occurred somewhere in the trailing 14 days (36h including 2 local nights, Table 8) or, failing that, the trailing 21 days (72h including 3 local nights). Live mode checks as if you were starting a new duty right now. Historic and Future modes both check against whatever duty <b>starts</b> on the displayed day — a standby if one exists, otherwise the earliest FDP (e.g. a training/sim day logged without a standby) — if neither has been entered for that day, the check simply doesn't run, since there's nothing to anchor it to.</li>
+        <li><b>Cumulative Fatigue Recovery (10.9 / 10.12.1) &mdash; changed in v1.1.</b> v0.9 required the break after <b>more than</b> three late night operations, which ruling R7 read as triggering at the 4th. v1.1 changed 10.9 to <b>three (3) or more</b>, so the break is now owed at the <b>3rd</b> LNO in the trailing 7 days, and it must fall <b>after that 3rd LNO</b>, before any further duty. The 7-day cumulative duty cap also drops to 40 hrs at 3 LNOs, applied independently by the Cumulative Duty (7d) gauge. A <b>4th</b> LNO taken after the break is permitted and owes no second break &mdash; the obligation is discharged once per 7 days &mdash; but it exhausts the four-per-7-days cap in 10.9, so any standby still covering 2300&ndash;0530 inside that window is badged <b>LNO CAP</b> in the Duty Log and raises an LNO Cap Exhausted tile. An increased FDP in the window triggers the same 36h break (R11, and now 10.6.1 in v1.1, which attaches that requirement to applying the increased limit where v0.9 attached it to taking an extension); where both apply the break must follow whichever came later. A qualifying break earlier in the same 7 days does not count.</li>
+        <li>The <b>Duty</b> tile was removed in v0.67.0. Its maximum was a local convention rather than a rule &mdash; Table 4 is defined against FDP start time and the tile applied it to the standby start &mdash; which made it the one gauge on the dashboard measured against a number OMY does not set. Cumulative duty against the real 10.13 limits is still shown, and hours per shift are in the Duty Log.</li>
+        <li><b>Where a stand-down starts (10.5) &mdash; corrected in v0.71.0.</b> A KSS score of 7 or more recorded at either the start or end of an FDP puts a mandatory rest band above the line on the Time Line, and it now begins <b>when work stops</b>, at the end of that task, rather than at the end of the containing standby. 10.5 requires the aircraft to be taken offline until the relevant stand-down period is achieved, so the stand-down runs from the moment fatigue is identified; a standby that happens still to be logged cannot postpone it, because 10.2 is explicit that being on standby means being free of all duties &mdash; standby is availability, not duty. Up to v0.70.1 the band was anchored to the end of the standby, which put it in the wrong place and meant a task taken inside the real window raised no conflict at all. Non-flying duty logged straight after the task &mdash; dead head travel, shift admin &mdash; does still push the start out, because that is real duty (R13). A later <b>FDP</b> does not: once fatigue has been identified no further task is lawful, so any FDP, NFD or standby starting inside the window is flagged as a conflict and named. The post-FDP rest owed under 10.12.3 keeps its anchor at the end of the standby, because 10.2 requires that rest to be taken before returning to standby or starting a new FDP.</li>
+        <li><b>The 30-minute NFD minimum (10.3) is applied at entry, not in the calculation</b> (from v0.71.0). 10.3 says that where a period of NFD is less than 30 minutes, 30 minutes is subtracted from the maximum allowable FDP. That floor exists so a short NFD still consumes a sensible block of duty; it is not meant to inflate the figure where real duty already occupies the time. Air Maestro is driven off the times entered, and the floor is applied when the entry is made &mdash; logging a 15-minute NFD as a 30-minute block &mdash; so the tool now reduces the FDP by the time <b>as entered</b>, and the two stay in step. A 15-minute NFD entered as 15 minutes reduces the limit by 0.3h, not 0.5h. <b>Worth knowing:</b> a genuine sub-30-minute NFD entered without that padding, with no duty following inside the window, will reduce the FDP by less than 10.3 strictly requires. Up to v0.70.1 the tool applied the floor itself, which overstated the reduction wherever an FDP started inside the padded block.</li>
+        <li><b>Rest either side of an increased FDP (10.6.1) &mdash; new in v1.1.</b> v0.9 required a 12-hour off-duty period only <b>after</b> an increased FDP, and ruling R3 left the app at that pending a change in the manual. v1.1 is that change: 12 hours is now required <b>both before and after</b>. The after-side is carried by the post-FDP rest tiles and the 12-hour floor on the rest owed; the before-side has its own Rest Before Increased FDP tile, reporting on the most recent increased FDP in the trailing 7 days. An increased FDP with no prior duty logged at all counts as satisfied, not failed.</li>
+        <li><b>The increased limit is a rostering action (10.6) &mdash; new in v1.1.</b> v1.1 says the increased (red) limits in Table 4 may be applied <b>prior to shift commencement</b>, via a roster change agreed with the member and the SBP/SACO, and that once duty has commenced an increase in FDP is not achieved by raising the duty limit but only by a split duty rest period or an extension. Ticking the increased-limit box on an FDP that has already started therefore raises a confirmation prompt. It is a warning, not a block: the record may be a retrospective entry of an FDP that was properly rostered to the increased limit beforehand.</li>
+        <li><b>An extension cannot exceed the cumulative limits (10.13) &mdash; new in v1.1.</b> v1.1 adds that an FCM extending an FDP via an extension cannot exceed the cumulative limits. The Extension vs Cumulative tile checks the most recent extended FDP in the trailing 7 days against the 7-day (40/60h) and 14-day (100h) caps and flags it where the extension carries duty past either, independently of whether the extension itself was within the permitted hours.</li>
         <li>The reduction of a calculated off-duty period to 12 hours (10.12.3) is not modelled.</li>
         <li>The orange marker line on today's Time Line shows the max FDP end time for the FDP a tasking right now would fall into — which continues the current FDP if no off-duty period has been taken since its last task, or starts a fresh one if it has. The red line is simply the current time. Yellow extension-limit lines only appear when an actual open FDP has an extension type selected on it — they're not shown as a generic "what's available" hint.</li>
         <li>An FDP logged with "Task still in progress" ticked has no end time yet — its duration, timeline band, and all totals stay live and keep growing until you edit it to add the actual end time. The "Must land by" banner and the marker lines above both use this open entry as their reference the moment one exists.</li>
@@ -633,7 +638,7 @@
         <li>An imported backup is rebuilt field by field against a known shape. Anything that cannot be read &mdash; an unknown type, a date that does not exist, a time that is not a valid 24-hour time, an end time equal to the start &mdash; is listed for you and skipped rather than stored, since an invalid date silently corrupts every rolling window and limit downstream. Unrecognised fields are dropped, and notes are capped at 500 characters. Text from entries is escaped before it reaches the page, so a backup file cannot run script in your signed-in session.</li>
         <li><b>Add Shift Block</b> on the Standby form writes four standby periods straight to the log, starting on the date selected: Day Shift, Day Shift, Night Shift, Night Shift on consecutive days. It warns first if any of those dates already has a standby, shows what it is about to add, and then moves the form date to the day after the block so a second block follows on.</li>
         <li><b>Shift type</b> is an explicit field on a standby entry (Day Shift / Night Shift / Not specified), set by the quick-fill buttons and the Shift Block. Up to v0.65.0 a Day Shift was detected from whether the free-text Notes happened to contain the words "Day Shift", so renaming a note could silently change a limit. Standbys saved before v0.66.0 have no field, and for those the old notes test still applies as a fallback &mdash; opening such an entry and saving it moves it onto the real field. An explicit Night Shift always wins over notes mentioning a day shift.</li>
-        <li>Per 10.6, an FDP within a Day Shift standby has its end capped at 2200 — the FDP tile, "Must land by" banner and orange marker line all reflect this. Select the <b>Day Shift past 22:00</b> extension option once Duty Officer/Chief Pilot approval is given to lift the cap back to the normal calculated limit, shown as a yellow marker line.</li>
+        <li>Per 10.6, an FDP within a Day Shift standby has its end capped at 2200 — the FDP tile, "Must land by" banner and orange marker line all reflect this. Select the <b>Day Shift past 22:00</b> extension option once Duty Officer/Head of Flight Operations approval is given to lift the cap back to the normal calculated limit, shown as a yellow marker line.</li>
         <li>This is a personal support tool. Air Maestro remains your company's official record per the FMS manual — always log there too.</li>
         <li>Data is stored privately to your own account in Firebase — not shared with anyone else.</li>
         <li>Use <b>Export Backup</b> periodically to save your entries to a file, and <b>Import Backup</b> to restore them — this protects you if data ever fails to carry over when this tool is updated.</li>
@@ -685,7 +690,7 @@ const firebaseConfig = {
              calculated (anything that can change a number on screen).
      PATCH — bug fixes and wording that don't change the rules.
    Set here only; the title and header read from it. */
-const APP_VERSION = '0.70.0';
+const APP_VERSION = '0.71.0';
 // Applied immediately rather than in init(), which only runs after sign-in —
 // otherwise the login screen shows a blank version tag.
 document.getElementById('versionTag').textContent = `v${APP_VERSION}`;
@@ -1032,7 +1037,7 @@ function fmtKSS(e){
   return `${s || '—'} / ${en || '—'}`;
 }
 
-/* ---------------- FDP table lookup (Table 6) ---------------- */
+/* ---------------- FDP table lookup (Table 4) ---------------- */
 function fdpTableValues(startDate, pilotType, sectors){
   const mins = startDate.getHours()*60 + startDate.getMinutes();
   const buckets = [
@@ -1156,13 +1161,13 @@ function splitDayNightHours(start, end){
 }
 // Auto split-duty rest: for an FDP, a gap of at least 2 consecutive hours
 // immediately following a PRIOR FDP (not NFD) within the same standby period
-// qualifies as split duty rest, per Table 7/8 (split duty rest follows landing
+// qualifies as split duty rest, per Table 5/8 (split duty rest follows landing
 // from a flight, and must be >= 2 hrs to qualify at all). Conservative
 // assumption: the portion of that gap falling 0600-2100 is treated as resting
-// accommodation only (half credit, capped at 2h per Table 8), since actually
+// accommodation only (half credit, capped at 2h per Table 6), since actually
 // using sleeping accommodation during the day is unrealistic; the portion
 // falling 2100-0600 is treated as genuine sleeping accommodation (full
-// credit per Table 7).
+// credit per Table 5).
 function autoSplitRestInfo(entry, all){
   if(entry.type !== 'FDP') return null;
   const {start} = entryDates(entry);
@@ -1190,7 +1195,7 @@ function autoSplitRestHours(entry, all){
 }
 
 // 10.6: an FCM shall not exceed a Day Shift past 22:00 without prior Duty
-// Officer/Chief Pilot approval. Which standby encloses the task is decided here;
+// Officer/Head of Flight Operations approval. Which standby encloses the task is decided here;
 // whether that standby is a Day Shift is standbyShiftType()'s job, below.
 function findEnclosingStandbyEntry(entry, all){
   const {start} = entryDates(entry);
@@ -1242,7 +1247,7 @@ function isDayShiftStandby(standbyEntry){
 // NFD between tasks is duty: it neither extends the limit nor breaks the FDP,
 // and it already consumes the clock, so it isn't deducted again. Only NFD in
 // the 8 hours before the FDP starts reduces the limit (10.3).
-const FDP_ODP_BREAK_HOURS = 8; // shortest minimum ODP in Table 10
+const FDP_ODP_BREAK_HOURS = 8; // shortest minimum ODP in Table 9
 
 function dutyCoverIntervals(all){
   return mergeIntervals(all
@@ -1417,16 +1422,41 @@ function computeFDPState(group, all, opts){
     if(allowed < max){ max = allowed; remainingPortionCapped = true; }
   }
 
-  // 10.3 — only NFD in the 8 hours before the FDP starts.
+  // 10.3 — only NFD in the 8 hours before the FDP starts, and every minute of it
+  // counted ONCE. Up to v0.70.0 the per-entry contributions were simply added,
+  // so the same 18:00-19:00 shift admin entered twice took 2.0h off the limit
+  // instead of 1.0h, and three overlapping entries covering 18:00-19:30 took
+  // 3.0h instead of 1.5h. Merging first fixes duplicates and partial overlaps
+  // alike. Minutes shared with an FDP belong to the FDP (R18), so FDP cover
+  // inside the window comes out too.
   const winStart = start.getTime() - 8*3600000;
-  let nfdHrs = 0;
+  const nfdWindowIvs = [];
   for(const e of all){
     if(e.type !== 'NFD') continue;
     const d = entryDates(e);
     const s = Math.max(d.start.getTime(), winStart), en = Math.min(d.end.getTime(), start.getTime());
-    if(en > s) nfdHrs += (en - s)/3600000;
+    if(en > s) nfdWindowIvs.push({ start:s, end:en });
   }
-  const reduction = nfdHrs > 0 ? Math.max(0.5, amHours(nfdHrs)) : 0;
+  const fdpCoverInWindow = mergeIntervals(all
+    .filter(e => e.type === 'FDP')
+    .map(e => { const d = entryDates(e); return { start:d.start.getTime(), end:d.end.getTime() }; }));
+  let nfdHrs = 0;
+  for(const iv of mergeIntervals(nfdWindowIvs)){
+    for(const piece of subtractIntervals(iv, fdpCoverInWindow)){
+      nfdHrs += (piece.end - piece.start)/3600000;
+    }
+  }
+  // 10.3's "if the period of NFD was less than 30 minutes, then 30 minutes
+  // will be subtracted" floor is NOT applied here, by ruling of 31 Oct. The
+  // floor exists so a short NFD still consumes a sensible block of duty; it is
+  // not meant to inflate the figure where real duty already occupies the time.
+  // Air Maestro is driven off entered times, and the user applies the floor at
+  // entry (logging a 15-minute NFD as a 30-minute block) exactly as they do in
+  // AM. The tool therefore calculates off the times as entered, so the two
+  // stay in step. Consequence to be aware of: a genuine sub-30-minute NFD
+  // entered WITHOUT that padding, with no duty following inside the window,
+  // will reduce the FDP by less than 10.3 strictly requires.
+  const reduction = nfdHrs > 0 ? amHours(nfdHrs) : 0;
   max -= reduction;
 
   // 10.6 — a Day Shift must not run past 2200 without approval. It's a cap on
@@ -1455,7 +1485,7 @@ function computeFDPState(group, all, opts){
   //                 towards the FDP unless it earns a credit (10.8.1).
   const valueEndMs = (open && asOf) ? Math.min(asOf.getTime(), lastTaskEnd) : lastTaskEnd;
   // Air Maestro rounding (amHours): these are the FDP figures reported and
-  // compared against the Table 6 limit, so they are held the way AM holds them.
+  // compared against the Table 4 limit, so they are held the way AM holds them.
   const elapsedToNow = amHours((open && asOf)
     ? Math.max(asOf.getTime() - start.getTime(), valueEndMs - start.getTime())/3600000
     : (lastTaskEnd - start.getTime())/3600000);
@@ -1468,6 +1498,11 @@ function computeFDPState(group, all, opts){
     // as distinct from splitRest (the credit it earns). 10.12.3 counts only
     // 50% of it when working out the rest owed afterwards (C8).
     restHours: amHours(qualifying.reduce((sum,r)=> sum + amHours((r.end-r.start)/3600000), 0)),
+    // How the qualifying split-duty rest breaks down by accommodation type,
+    // under the same 2100-0600 convention used for the credit above. v1.1's
+    // 10.12.3 keys the over-12h add-on off which accommodation was used to
+    // extend the FDP, so the breakdown has to survive out of here.
+    restNightHours: amHours(nightHrs), restDayHours: amHours(dayHrs), pilotType,
     ext, reduction, capped16, remainingPortionCapped, dayShift22Capped,
     group, open, taskInProgress: tasks.some(t => isOpenEntry(t.e)),
     taskCount: tasks.filter(t => !t.virtual).length,
@@ -1549,7 +1584,7 @@ function sumDutyWindow(all, hoursBack, ref){
   // overlapping entries are rounded as one block, which avoids counting the same
   // minutes twice.
   let sum = mergeIntervals(ivs).reduce((acc,iv)=> acc + amHours((iv.end-iv.start)/3600000), 0);
-  // Table 12 note: split-duty rest periods count at 50% toward cumulative duty.
+  // Table 9 note: split-duty rest periods count at 50% toward cumulative duty.
   // Clip the rest period to the window too.
   for(const e of all){
     if(e.type!=='FDP') continue;
@@ -1597,7 +1632,7 @@ function lateNightKeys(e){
 }
 function countLNOWindow(all, hoursBack, ref){
   const cutoff = ref.getTime() - hoursBack*3600000;
-  // Note under 10.13: only one LNO is recorded per local night regardless of
+  // Note under 10.9: only one LNO is recorded per local night regardless of
   // how many FDPs occurred, so count distinct local nights rather than FDPs.
   const nights = new Set();
   for(const e of all){
@@ -1710,26 +1745,38 @@ function lnoNightsInWindow(all, hoursBack, ref){
     .sort((a,b) => a.nightMs - b.nightMs);
 }
 
-/* ---------------- 10.12.1 Off Duty Cumulative Fatigue Recovery ---------------- */
-// Ruling R7 (29 Sep) reads 10.9/10.12.1 as two separate protections rather than
-// one, and that is what is modelled here:
+/* ---------------- 10.9 / 10.12.1 Off Duty Cumulative Fatigue Recovery ---------------- */
+// OMY v1.1 changed 10.9 from "If you do MORE THAN three (3) late night FDPs
+// (cumulatively), you must then be off duty for a minimum of 36 hours over two
+// (2) local nights" to "If you do THREE (3) OR MORE ...". That supersedes
+// ruling R7 (29 Sep), which was written against v0.9's wording. Per the ruling
+// of 31 Oct:
 //
-//   Exactly 3 LNO in 7 days -> no recovery break is owed. The protection at
-//     that level is the 7-day cumulative duty cap dropping to 40 hours, which
-//     the Cumulative Duty (7d) gauge applies independently.
-//   MORE than 3 LNO        -> 36 hours off duty over two local nights, and that
-//     break must be taken after the 4th LNO, before any further duty.
+//   0-2 LNO in 7 days -> no recovery break owed.
+//   3 or more LNO     -> 36 hours off duty over two local nights, and that
+//     break must be taken after the 3rd LNO, before any further duty. The
+//     7-day cumulative duty cap also drops to 40 hours at this point, applied
+//     independently by the Cumulative Duty (7d) gauge.
+//   A 4th LNO after that break is permitted and does NOT owe a second break —
+//     the obligation is discharged once per 7 days at the 3rd LNO. What a 4th
+//     LNO does do is exhaust the four-per-7-days cap in 10.9, so no further
+//     LNO may be conducted in the window; lnoCapExhaustedCheck below flags any
+//     standby that would still cover the late-night period.
 //
-// An increased FDP inside the window triggers the same break (ruling R11); the
-// break then has to follow the increased FDP for the same reason. Where both
-// apply, the break must follow whichever came later.
+// An increased FDP inside the window triggers the same break (ruling R11, and
+// now 10.6.1 in v1.1: "An FCM that applies the increased limit to their FDP
+// must have an off-duty period of at least 36 hours that includes two (2)
+// local night in any seven (7) days"). v0.9 attached that requirement to
+// pilots who EXTENDED an FDP; v1.1 attaches it to those who apply the
+// INCREASED LIMIT, which is what is keyed on here. Where both apply, the break
+// must follow whichever came later.
 function cumulativeFatigueRecoveryCheck(checkPoint, all){
   const lno7 = countLNOWindow(all, 168, checkPoint);
   const cutoff = checkPoint.getTime() - 168*3600000;
   const increasedFDPs = all.filter(e => e.type==='FDP' && e.increasedFDP
     && entryDates(e).start.getTime() >= cutoff && entryDates(e).start.getTime() <= checkPoint.getTime());
   const increasedFDPUsed = increasedFDPs.length > 0;
-  const lnoTriggered = lno7 > 3;
+  const lnoTriggered = lno7 >= 3;
   const triggered = lnoTriggered || increasedFDPUsed;
   if(!triggered) return { triggered:false, lno7, increasedFDPUsed, lnoTriggered };
 
@@ -1737,7 +1784,9 @@ function cumulativeFatigueRecoveryCheck(checkPoint, all){
   let anchorMs = null, anchorWhat = [];
   if(lnoTriggered){
     const nights = lnoNightsInWindow(all, 168, checkPoint);
-    if(nights.length >= 4){ anchorMs = nights[3].endMs; anchorWhat.push('the 4th late night operation'); }
+    // Anchored to the 3rd LNO, not the 4th: v1.1 owes the break at 3 or more,
+    // and a 4th conducted after the break does not reset the anchor.
+    if(nights.length >= 3){ anchorMs = nights[2].endMs; anchorWhat.push('the 3rd late night operation'); }
   }
   if(increasedFDPUsed){
     const lastIncr = Math.max(...increasedFDPs.map(e => entryDates(e).end.getTime()));
@@ -1751,6 +1800,74 @@ function cumulativeFatigueRecoveryCheck(checkPoint, all){
            lno7, increasedFDPUsed, lnoTriggered };
 }
 
+// 10.9: "You must not conduct more than four (4) late night FDPs
+// (cumulatively)" in any seven days. Once four LNOs have been conducted the
+// cap is exhausted, so no further LNO may take place inside that window — and
+// any standby still rostered across the late-night period (more than 30
+// minutes between 2300 and 0530) is one on which a callout could not lawfully
+// be accepted as an LNO. Ruling of 31 Oct asks for those standbys to be
+// flagged. The window is rolling, so the count is taken as at each standby's
+// own start; a standby far enough clear of the four is not flagged.
+function lnoCapExhaustedStandbys(all){
+  const out = [];
+  for(const e of all){
+    if(e.type !== 'STANDBY') continue;
+    const {start, end} = entryDates(e);
+    if(lateNightOverlapMinutes(start, end) <= 30) continue;
+    const priorLNO = countLNOWindow(all, 168, start);
+    if(priorLNO >= 4) out.push({ entry:e, start, end, priorLNO });
+  }
+  return out.sort((a,b)=> a.start - b.start);
+}
+function standbyLNOCapExhausted(entry, all){
+  if(entry.type !== 'STANDBY') return false;
+  const {start, end} = entryDates(entry);
+  if(lateNightOverlapMinutes(start, end) <= 30) return false;
+  return countLNOWindow(all, 168, start) >= 4;
+}
+
+// 10.6.1 (v1.1): "The off duty period prior to commencing an increased FDP
+// must be at least 12 hours; The off-duty period after the increased FDP must
+// be at least 12 hours." v0.9 required the 12 hours only afterwards, and
+// ruling R3 left the app at that pending a change in the manual. v1.1 is that
+// change, adopted by ruling of 31 Oct. The after-side is already enforced by
+// requiredODPHours (the 12h floor on an increased FDP); this is the before-side.
+function increasedFDPPriorRestCheck(entry, all){
+  if(entry.type !== 'FDP' || !entry.increasedFDP) return null;
+  const {start} = entryDates(entry);
+  const startMs = start.getTime();
+  // No prior duty at all means unbounded rest, not zero rest.
+  const hasPrior = all.some(e => ['FDP','NFD','STANDBY'].includes(e.type)
+    && e.id !== entry.id && entryDates(e).end.getTime() <= startMs);
+  if(!hasPrior) return { required:12, actual:null, satisfied:true, noPriorDuty:true };
+  let gap = null;
+  for(const g of dutyFreeGaps(all, start)){
+    if(Math.abs(g.end - startMs) <= 60000) gap = g;
+  }
+  const actual = gap ? amHours(gap.hours) : 0;
+  return { required:12, actual, satisfied: actual >= 12, gap, noPriorDuty:false };
+}
+
+// 10.13 (v1.1), new sentence: "An FCM extending an FDP via an extension cannot
+// exceed the cumulative limits below." An extension is therefore not available
+// to carry duty past the 7-day or 14-day cumulative caps, however much FDP the
+// extension itself would allow. Adopted by ruling of 31 Oct.
+function extensionCumulativeCheck(entry, all, ref){
+  if(entry.type !== 'FDP') return null;
+  const extHrs = (entry.extType && entry.extType!=='none') ? Number(entry.extHours||0) : 0;
+  if(extHrs <= 0) return null;
+  const {end} = entryDates(entry);
+  const at = ref || end;
+  const lno7 = countLNOWindow(all, 168, at);
+  const cap7 = (lno7 >= 3) ? 40 : (hasQualifyingGap(all, 168, at) ? 60 : 40);
+  const duty7 = sumDutyWindow(all, 168, at);
+  const duty14 = sumDutyWindow(all, 336, at);
+  const breaches = [];
+  if(duty7 > cap7) breaches.push({ window:'7-day', actual:amHours(duty7), cap:cap7 });
+  if(duty14 > 100) breaches.push({ window:'14-day', actual:amHours(duty14), cap:100 });
+  return breaches.length ? { breached:true, breaches, extHrs } : { breached:false, extHrs };
+}
+
 function lastOfType(all, type, asOf){
   let list = all.filter(e=>e.type===type);
   if(asOf) list = list.filter(e=> entryDates(e).start.getTime() <= asOf.getTime());
@@ -1761,7 +1878,7 @@ function lastOfType(all, type, asOf){
 /* ---------------- 10.12.2 Before Commencing an FDP or Standby (Preceding) ---------------- */
 // Before commencing any FDP or standby, there must have been at least one
 // qualifying off-duty period at some point in the trailing 14 days (36h,
-// including 2 local nights — Table 9), or failing that, in the trailing 21
+// including 2 local nights — Table 8), or failing that, in the trailing 21
 // days (72h, including 3 local nights). This scans backward from a given
 // reference moment for the nearest qualifying gap between logged duty
 // (FDP/NFD/STANDBY) periods.
@@ -1803,7 +1920,7 @@ function prGapText(pr){
 
 /* ---------------- Required off-duty period (Tables 10 / 11) ---------------- */
 // Minimum ODP owed after completing an FDP or a Standby period.
-// Base from Table 10 by where the REST falls, not by completion time (rest
+// Base from Table 9 by where the REST falls, not by completion time (rest
 // starting 0600-2259 -> 8h, rest starting 2300-0559 -> 10h; ruling R2),
 // plus, for an FDP: time the FDP exceeded 12 hrs, or 1 hr per 30 min (or part)
 // extended past the FDP limit. An increased FDP requires at least 12 hrs (10.6.1).
@@ -1841,7 +1958,7 @@ function requiredODPHours(entry, all, effectiveEnd){
   if(entry.type === 'STANDBY'){
     // C5 — the increased-FDP 12h floor and the extension add-ons belong to the
     // FDP flown inside the standby, not to the standby record. Evaluating the
-    // standby on its own returned the Table 10 base and silently missed both,
+    // standby on its own returned the Table 9 base and silently missed both,
     // so the rest owed after a 14h increased FDP read as 8 or 10 hours.
     let required = hours;
     for(const f of fdpsWithinStandby(entry, all)){
@@ -1852,14 +1969,33 @@ function requiredODPHours(entry, all, effectiveEnd){
   if(entry.type === 'FDP'){
     // C8 — the over-12h component measures the WHOLE FDP, not just this task.
     // A 6h task that was the second half of a 14h FDP owes the add-on; measuring
-    // the task alone gave nothing. And 10.12.3: "only 50% of the split duty rest
-    // period need be considered in calculating the subsequent off duty rest
-    // period", so half of any qualifying rest inside the FDP comes back off.
+    // the task alone gave nothing.
+    //
+    // OMY v1.1 rewrote 10.12.3's add-on rules. v0.9 read "Plus the amount of
+    // displacement time, and EITHER the amount the FDP exceeded 12 hours, OR
+    // 1 hour for every 30 minutes extended past the limit", with a separate
+    // rule discounting 50% of the SPLIT DUTY REST PERIOD. v1.1 replaces that
+    // with a bulleted list carrying no "either/or":
+    //
+    //   - two pilot operations, or RESTING accommodation used to extend via
+    //     split duty  -> add the full amount the FDP exceeded 12 hours;
+    //   - SLEEPING accommodation used to extend via split duty
+    //                 -> add 50% of the amount the FDP exceeded 12 hours;
+    //   - FDP increased by an extension
+    //                 -> add 1 hour per 30 minutes (or part) past the limit;
+    //   - changed time zones -> add the displacement time (always 0 here, R4:
+    //     all operations are in one time zone).
+    //
+    // Two consequences, both cleared by the user on 31 Oct:
+    //   1. the 50% now applies to the OVER-12 AMOUNT, not to the rest period,
+    //      and only where sleeping accommodation was the mechanism;
+    //   2. the over-12 and extension add-ons now STACK, where v0.9 took one or
+    //      the other. Air Maestro's own treatment is still to be confirmed —
+    //      stacking is the literal reading of v1.1 and the conservative one.
     const st = fdpStateForTask(entry, all);
     const fdpHours = st ? st.value : durationHours(entry);
-    const splitRestTaken = st ? st.restHours : 0;
     const postDuty = postFDPDutyHours(entry, all, end);
-    const dur = fdpHours + postDuty - splitRestTaken*0.5;
+    const dur = fdpHours + postDuty;
     // An extension applies to whichever task carried it; the FDP as a whole is
     // what the 12h comparison uses, so check every task in it.
     let extHrs = 0;
@@ -1867,11 +2003,21 @@ function requiredODPHours(entry, all, effectiveEnd){
     for(const t of tasksHere){
       if(t.extType && t.extType!=='none') extHrs = Math.max(extHrs, Number(t.extHours||0));
     }
+    if(dur > 12){
+      // Which accommodation extended the FDP, under the same 2100-0600
+      // convention the credit uses. The 50% concession is given only where
+      // sleeping accommodation did the work on its own: any resting-
+      // accommodation credit in the mix puts it under the first bullet, and
+      // so does a two-pilot operation, which v1.1 lists there explicitly.
+      const multiPilot = tasksHere.some(t => (t.pilotType||'single') === 'multi');
+      const nightRest = st ? (st.restNightHours||0) : 0;
+      const dayRest   = st ? (st.restDayHours||0)   : 0;
+      const sleepingOnly = nightRest > 0 && dayRest === 0;
+      hours += (sleepingOnly && !multiPilot) ? (dur - 12) * 0.5 : (dur - 12);
+    }
     if(extHrs > 0){
       // 1 hour for every 30 minutes, or part of 30 minutes, extended past the limit
       hours += Math.ceil(extHrs / 0.5) * 1;
-    } else if(dur > 12){
-      hours += (dur - 12);
     }
     const increasedHere = st && st.increased ? true : !!entry.increasedFDP;
     if(increasedHere) hours = Math.max(hours, 12);
@@ -1921,9 +2067,40 @@ function odpStatus(entry, all, effectiveEnd){
 // all, because the dates differed. It now extends only while the time in between
 // is too short to be an off-duty period, using the same free-gap test that
 // decides whether two tasks belong to the same FDP.
-function continuousDutyEnd(entry, all){
+// Where a 10.5 stand-down begins. Two things must NOT postpone it:
+//
+//   STANDBY, because 10.2 is explicit that "for FCM to be on Standby the FCM
+//     must be free of all duties" — standby is availability, not duty, so it
+//     cannot delay a stand-down that 10.5 requires to begin at once. Anchoring
+//     to the end of the standby was the bug reported on 31 Oct.
+//   A LATER FDP, because once fatigue has been identified no further task is
+//     lawful. Chaining through subsequent FDPs would slide the window past the
+//     very task that breached it, so the breach could never be detected.
+//
+// What does push the anchor out is non-flying duty logged immediately after the
+// task — dead head travel, shift admin — which is real duty and cannot be slept
+// through, keeping ruling R13 intact. A 30-minute grace absorbs the gap left by
+// the FDP definition's own "ends not less than 30 minutes after the flight".
+const STAND_DOWN_CHAIN_GRACE_MS = 30*60000;
+function continuousWorkEnd(entry, all){
+  const nfds = all.filter(e => e.type === 'NFD')
+    .map(e => { const d = entryDates(e); return { start:d.start.getTime(), end:d.end.getTime() }; })
+    .sort((a,b) => a.start - b.start);
+  let end = entryDates(entry).end.getTime();
+  let extended = true;
+  while(extended){
+    extended = false;
+    for(const d of nfds){
+      if(d.end <= end) continue;
+      if(d.start <= end + STAND_DOWN_CHAIN_GRACE_MS){ end = d.end; extended = true; }
+    }
+  }
+  return new Date(end);
+}
+function continuousDutyEnd(entry, all, opts){
+  const includeStandby = !opts || opts.includeStandby !== false;
   const cover = dutyCoverIntervals(all);
-  const later = all.filter(e => e.type==='FDP' || e.type==='NFD' || e.type==='STANDBY')
+  const later = all.filter(e => e.type==='FDP' || e.type==='NFD' || (includeStandby && e.type==='STANDBY'))
     .map(e => { const d = entryDates(e); return { start:d.start.getTime(), end:d.end.getTime() }; })
     .sort((a,b)=> a.start - b.start);
   let end = entryDates(entry).end.getTime();
@@ -1943,7 +2120,7 @@ function continuousDutyEnd(entry, all){
 // The FDP/Standby that most recently ENDED at or before a given start time —
 // i.e. the duty whose rest period led into `beforeStart`. Used to evaluate
 // "was the off-duty period taken before this duty commenced sufficient",
-// which is the actually-known, backward-looking half of Table 10/11 —
+// which is the actually-known, backward-looking half of Table 9/11 —
 // as opposed to odpStatus(entry,...) which looks forward from an entry's end
 // and is 'pending' for any duty whose next entry hasn't happened yet.
 // Compares/qualifies using continuousDutyEnd (see above) rather than the raw
@@ -1980,7 +2157,7 @@ function dutyBlockStart(all, anchor){
   return block ? new Date(block.start) : entryDates(anchor).start;
 }
 
-// Table 10: minimum off-duty period after an FDP. The table's middle column is
+// Table 9: minimum off-duty period after an FDP. The table's middle column is
 // headed "Off Duty Time Period", so the 8h/10h split turns on where the REST
 // falls, not on when duty finished (ruling R2, 29 Sep):
 //
@@ -2196,7 +2373,7 @@ function openTaskBannerHTML(openEntry, all){
   if(st.reduction > 0) adj.push(`-${fmtHrs(st.reduction)}h prior NFD`);
   if(st.capped16) adj.push('capped at 16h');
   if(st.dayShift22Capped) adj.push('capped 2200 — 10.6 Duty Officer approval required to extend');
-  if(st.remainingPortionCapped) adj.push('capped by 10.8.1 — remaining portion limited to a fresh Table 6 lookup at resumption');
+  if(st.remainingPortionCapped) adj.push('capped by 10.8.1 — remaining portion limited to a fresh Table 4 lookup at resumption');
   if(isContinuation){
     const anchorStr = fmtMarkerTime(anchor, nowReal);
     adj.push(`FDP began ${anchorStr}${st.taskCount > 1 ? ` (${st.taskCount} tasks)` : ''} — no off-duty period since`);
@@ -2360,7 +2537,7 @@ function fdpsWithinStandby(standby, all){
   });
 }
 // Flight Time (10.6) for the FDP the FDP tile is reporting on. 10.6 limits
-// flight time within a single FDP to 10 hrs single-pilot / 12 hrs multi-crew,
+// flight time within a single FDP to 10 hrs single-pilot / 12 hrs multi-pilot,
 // and under the FDP model every task in a shift is one FDP — so the old pair of
 // tiles ("last FDP" and "Shift") were measuring the same thing against the same
 // limit, one of them labelled as a reference figure because it predates the
@@ -2405,7 +2582,7 @@ function renderDashboard(){
     html += gaugeHTML(fdpLabel, 0, 1, 'hrs max', 'No FDP logged for this day', false);
   } else if(fdpTile.noTasks){
     html += gaugeHTML(fdpLabel, 0, fdpTile.base, 'hrs max',
-      `No task logged in this standby — ${fmtHrs(fdpTile.base)}h available from its start (Table 6)`, false);
+      `No task logged in this standby — ${fmtHrs(fdpTile.base)}h available from its start (Table 4)`, false);
   } else {
     const st = fdpTile.st;
     const subParts = [];
@@ -2438,10 +2615,10 @@ function renderDashboard(){
   const lastStandby = lastOfType(entries, 'STANDBY', now);
 
   // The Duty tile was removed in v0.67.0. Its maximum was a local convention
-  // rather than a rule — Table 6 is defined against FDP start time, and the tile
+  // rather than a rule — Table 4 is defined against FDP start time, and the tile
   // applied it to the standby start — so it was the one gauge on the dashboard
   // measuring against a number OMY does not set. Cumulative duty against the
-  // real 10.14 limits is still shown below, and hours per shift are in the Duty
+  // real 10.13 limits is still shown below, and hours per shift are in the Duty
   // Log. currentDutyContext, dutyPeriodHours and dutyHoursForDay went with it.
 
   // Flight Time (10.6) — one tile. Every task in a shift belongs to the same
@@ -2453,7 +2630,7 @@ function renderDashboard(){
   if(!ftState){
     html += gaugeHTML('Flight Time (10.6)', 0, 10, 'hrs max', 'No FDP logged for this day', false);
   } else {
-    const crewLabel = ftState.multi ? 'multi-crew' : 'single pilot';
+    const crewLabel = ftState.multi ? 'multi-pilot' : 'single pilot';
     const sub = [`Flight time within this FDP · limit ${fmtHrs(ftState.limit)}h ${crewLabel}`];
     if(ftState.taskCount > 1) sub.push(`${ftState.taskCount} tasks`);
     if(ftState.missing > 0) sub.push(`⚠ ${ftState.missing} task${ftState.missing===1?'':'s'} with no flight time recorded`);
@@ -2581,29 +2758,88 @@ function renderDashboard(){
   const qualifies60 = hasQualifyingGap(entries, 168, now);
   const cap7 = (lno7 >= 3) ? 40 : (qualifies60 ? 60 : 40);
   const duty7 = sumDutyWindow(entries, 168, now);
-  html += gaugeHTML('Cumulative Duty (7d, 10.14)', duty7, cap7, 'hrs',
+  html += gaugeHTML('Cumulative Duty (7d, 10.13)', duty7, cap7, 'hrs',
     `Cap = ${cap7}h (${lno7>=3 ? '3+ LNO Operations in period' : (qualifies60 ? '36h+ gap with 2 local nights found' : 'default, no qualifying rest gap detected')})`,
     duty7 > cap7);
 
   // 14-day cumulative duty vs 100
   const duty14 = sumDutyWindow(entries, 336, now);
-  html += gaugeHTML('Cumulative Duty (14d, 10.14)', duty14, 100, 'hrs', 'Fixed 100-hour limit per 336 consecutive hours', duty14>100);
+  html += gaugeHTML('Cumulative Duty (14d, 10.13)', duty14, 100, 'hrs', 'Fixed 100-hour limit per 336 consecutive hours', duty14>100);
 
   // 28-day flight time vs 100
   const flight28 = sumFlightTimeWindow(entries, 672, now);
-  html += gaugeHTML('Flight Time (28d, 10.14)', flight28, 100, 'hrs', 'Limit per any 28 consecutive days', flight28>100);
+  html += gaugeHTML('Flight Time (28d, 10.13)', flight28, 100, 'hrs', 'Limit per any 28 consecutive days', flight28>100);
 
   // 365-day flight time vs 1000
   const flight365 = sumFlightTimeWindow(entries, 8760, now);
-  html += gaugeHTML('Flight Time (365d, 10.14)', flight365, 1000, 'hrs', 'Limit per any 365 consecutive days', flight365>1000);
+  html += gaugeHTML('Flight Time (365d, 10.13)', flight365, 1000, 'hrs', 'Limit per any 365 consecutive days', flight365>1000);
 
 
   // LNO count 7d vs 4
-  html += gaugeHTML('Late Night Operations (7d, 10.13)', lno7, 4, 'FDPs', 'Max 4 late-night FDPs (>30 min between 2300–0530) per 168 hrs', lno7>4);
+  html += gaugeHTML('Late Night Operations (7d, 10.9)', lno7, 4, 'FDPs', 'Max 4 late-night FDPs (>30 min between 2300–0530) per 168 hrs', lno7>4);
 
   // Increased FDP count 7d vs 2
   const incr7 = countIncreasedWindow(entries, 168, now);
   html += gaugeHTML('Increased FDPs (7d, 10.6.1)', incr7, 2, 'used', 'Max 2 increased-limit FDPs per 7-day period', incr7>2);
+
+  // 10.6.1 (v1.1) — 12 hours off duty is now required on BOTH sides of an
+  // increased FDP. The after-side is carried by the post-FDP rest tiles; this
+  // reports the before-side for the most recent increased FDP in the window.
+  {
+    const incrFDPs = entries.filter(e => e.type==='FDP' && e.increasedFDP
+      && entryDates(e).start.getTime() <= now.getTime()
+      && entryDates(e).start.getTime() >= now.getTime() - 168*3600000)
+      .sort((a,b)=> entryDates(b).start - entryDates(a).start);
+    if(incrFDPs.length){
+      const pr = increasedFDPPriorRestCheck(incrFDPs[0], entries);
+      const whenTxt = fmtDateTimeShort(entryDates(incrFDPs[0]).start);
+      if(pr && pr.noPriorDuty){
+        html += statusGaugeHTML('Rest Before Increased FDP (10.6.1)', 'ok', 'Satisfied',
+          `No prior duty logged before the increased FDP of ${whenTxt}`);
+      } else if(pr && pr.satisfied){
+        html += statusGaugeHTML('Rest Before Increased FDP (10.6.1)', 'ok', `${fmtHrs(pr.actual)} / 12h`,
+          `Off-duty period before the increased FDP of ${whenTxt}`);
+      } else if(pr){
+        html += statusGaugeHTML('Rest Before Increased FDP (10.6.1)', 'violation', `${fmtHrs(pr.actual)} / 12h`,
+          `Only ${fmtHrs(pr.actual)} off duty before the increased FDP of ${whenTxt} — 12h is required both before and after (v1.1)`);
+      }
+    }
+  }
+
+  // 10.13 (v1.1) — "An FCM extending an FDP via an extension cannot exceed the
+  // cumulative limits below." Reported against the most recent extended FDP.
+  {
+    const extFDPs = entries.filter(e => e.type==='FDP' && e.extType && e.extType!=='none'
+      && Number(e.extHours||0) > 0
+      && entryDates(e).start.getTime() <= now.getTime()
+      && entryDates(e).start.getTime() >= now.getTime() - 168*3600000)
+      .sort((a,b)=> entryDates(b).end - entryDates(a).end);
+    if(extFDPs.length){
+      const ec = extensionCumulativeCheck(extFDPs[0], entries);
+      const whenTxt = fmtDateTimeShort(entryDates(extFDPs[0]).end);
+      if(ec && ec.breached){
+        const detail = ec.breaches.map(b => `${b.window} duty ${fmtHrs(b.actual)} against a ${b.cap}h cap`).join('; ');
+        html += statusGaugeHTML('Extension vs Cumulative (10.13)', 'violation', 'Exceeded',
+          `The FDP extended at ${whenTxt} sits outside the cumulative limits — ${detail}. An extension cannot be used to exceed them.`);
+      } else if(ec){
+        html += statusGaugeHTML('Extension vs Cumulative (10.13)', 'ok', 'Within limits',
+          `The FDP extended at ${whenTxt} is inside the 7-day and 14-day cumulative caps`);
+      }
+    }
+  }
+
+  // 10.9 — once four LNOs have been conducted in the rolling 7 days, no
+  // further LNO is available, so a standby still covering 2300-0530 is one on
+  // which a late-night callout could not lawfully be accepted.
+  {
+    const exhausted = lnoCapExhaustedStandbys(entries)
+      .filter(x => x.end.getTime() >= now.getTime() - 168*3600000);
+    if(exhausted.length){
+      const next = exhausted.find(x => x.end.getTime() >= now.getTime()) || exhausted[exhausted.length-1];
+      html += statusGaugeHTML('LNO Cap Exhausted (10.9)', 'violation', `${exhausted.length} standby${exhausted.length>1?'s':''}`,
+        `4 late night operations already conducted in the 7 days before the standby of ${fmtDateTimeShort(next.start)}, which still covers 2300–0530. No further LNO may be conducted in that window.`);
+    }
+  }
 
   // Last Standby vs 24h — scoped to the day being viewed (live: current/most
   // recent today; past: the standby ending that day; future: the standby
@@ -2696,6 +2932,13 @@ function buildLogRows(subset, all){
       const sType = standbyShiftType(e);
       if(sType === 'day') flags += '<span class="badge badge-split">DAY</span>';
       else if(sType === 'night') flags += '<span class="badge badge-lno">NIGHT</span>';
+      // 10.9 — four LNOs already used in the rolling 7 days, and this standby
+      // still covers 2300-0530, so no late-night callout may be accepted on it.
+      if(standbyLNOCapExhausted(e, entries)){
+        flags += '<span class="badge badge-lnocap" title="4 late night operations already conducted in the preceding 7 days — no further LNO may be conducted (10.9)"'
+          + ' data-tip="4 late night operations already conducted in the preceding 7 days. 10.9 caps late night FDPs at four per seven days, so a late-night callout on this standby would breach the cap."'
+          + ' data-tip-title="LNO cap exhausted">LNO CAP</span>';
+      }
       status = dur > 24 ? `<span class="status-over">Over 24h</span>` : `<span class="status-ok">OK</span>`;
     }
 
@@ -2821,22 +3064,22 @@ function clipToDay(start, end, dayStart, dayEnd){
 //   KSS = 7            -> three hours at suitable sleeping accommodation.
 //   KSS greater than 7 -> the FULL 10.12.3 rest, add-ons included.
 // The manual's own reference for the 8-or-greater case ("Minimum ODP as per
-// Table 4") is a documented error — Table 4 is only the 1–9 KSS descriptive
+// Table 2") is a documented error — Table 2 is only the 1–9 KSS descriptive
 // scale and carries no ODP figures. R6 directs the full 10.12.3 calculation,
-// so this now returns requiredODPHours (Table 10 base plus the over-12h or
-// extension component) rather than the Table 10 base alone.
+// so this now returns requiredODPHours (Table 9 base plus the over-12h or
+// extension component) rather than the Table 9 base alone.
 // Rest cannot begin while duty is still running, so the reference point is
 // the end of the last duty of that day (R13), not the task's own end.
 function kssStandDownHours(entry, all){
   if(entry.type !== 'FDP') return 0;
   const worst = Math.max(Number(entry.kssStart)||0, Number(entry.kssEnd)||0);
-  if(worst >= 8) return requiredODPHours(entry, all, continuousDutyEnd(entry, all));
+  if(worst >= 8) return requiredODPHours(entry, all, continuousWorkEnd(entry, all));
   if(worst === 7) return 3;
   return 0;
 }
 // 10.5 "FCM FDP limit exceeded" stand-down: only applies when this FDP
 // actually needed an extension, was increased, or organically ran past 12h
-// — reuses the existing Table 10 base + extension/exceed-12h formula
+// — reuses the existing Table 9 base + extension/exceed-12h formula
 // (requiredODPHours) already used for the general post-FDP rest check.
 function extensionStandDownHours(entry, all){
   if(entry.type !== 'FDP') return 0;
@@ -2859,32 +3102,55 @@ function mandatoryRestBands(all){
     if(e.type !== 'FDP') continue;
     const kssH = kssStandDownHours(e, all);
     const extH = extensionStandDownHours(e, all);
-    const hours = Math.max(kssH, extH);
+    if(kssH <= 0 && extH <= 0) continue;
+    // The two triggers do not start at the same moment, so they cannot share
+    // one anchor — this was the cause of the KSS mis-placement reported on
+    // 31 Oct, where a KSS stand-down appeared at the end of the containing
+    // standby and a task taken inside the real window raised no conflict.
+    //
+    //   KSS stand-down (10.5) starts as soon as work stops. "The aircraft
+    //     shall be taken offline until the relevant stand-down period is
+    //     achieved" — the stand-down runs from the moment fatigue is
+    //     identified, and a standby that happens still to be logged cannot
+    //     postpone it, because standby is not duty (10.2). Anchored to
+    //     continuousWorkEnd: trailing NFD still pushes it out (R13), standby
+    //     does not.
+    //   Post-FDP rest (10.12.3) is different: 10.2 requires that ODP to be
+    //     taken "before returning to Standby or starting a new FDP", so a
+    //     standby still running genuinely does hold it open. Anchored to
+    //     continuousDutyEnd, unchanged.
+    //
+    // Where both fire, the band is the union of the two windows rather than
+    // the sum of their durations — still "take the larger, not additive"
+    // (R6), now expressed as an envelope because the starts differ.
+    const kssAnchor = kssH > 0 ? continuousWorkEnd(e, all).getTime() : null;
+    const extAnchor = extH > 0 ? continuousDutyEnd(e, all).getTime() : null;
+    const kssEnd = kssAnchor !== null ? kssAnchor + kssH*3600000 : null;
+    const extEnd = extAnchor !== null ? extAnchor + extH*3600000 : null;
+    const bandStart = Math.min(...[kssAnchor, extAnchor].filter(v => v !== null));
+    const bandEnd   = Math.max(...[kssEnd, extEnd].filter(v => v !== null));
+    const hours = amHours((bandEnd - bandStart)/3600000);
     if(hours <= 0) continue;
-    // Rest can't start while duty is still running, whichever trigger applies:
-    // a KSS score of 8 or more now attracts the full 10.12.3 rest (R6), which
-    // is measured from the end of the day's duty (R13), and dead-head travel
-    // logged after the task is duty. The 3-hour KSS=7 rest is anchored the same
-    // way for the same reason.
-    const anchor = continuousDutyEnd(e, all);
-    const restEnd = new Date(anchor.getTime() + hours*3600000);
     const kssScore = Math.max(Number(e.kssStart)||0, Number(e.kssEnd)||0);
-    bands.push({ start: anchor.getTime(), end: restEnd.getTime(), sourceEntry: e, hours, via: extH > kssH ? 'ext' : 'kss', kssScore });
+    bands.push({ start: bandStart, end: bandEnd, sourceEntry: e, hours,
+                 via: (extEnd !== null && (kssEnd === null || extEnd > kssEnd)) ? 'ext' : 'kss',
+                 kssScore, kssHours: kssH, extHours: extH });
   }
   return bands;
 }
-// Two conflict sources: (1) the standby containing the triggering task is
-// still logged as running into the rest window — the crew would show as
-// available/on-call during protected rest; (2) another FDP/NFD/STANDBY
-// starts during the window. Checked in that order since an unshortened
-// standby is the far more likely real-world case.
+// Two conflict sources: (1) another FDP/NFD/STANDBY actually starts during the
+// rest window; (2) the standby containing the triggering task is still logged
+// as running into the window, so the crew would show as available/on-call
+// during protected rest.
+//
+// The entry conflict is checked FIRST. It used to be the other way round, on
+// the reasoning that an unshortened standby was the more likely real-world
+// case — but now that a KSS stand-down is anchored to the end of work rather
+// than to the end of the standby, the containing standby overlaps the window
+// on virtually every mid-standby KSS, and checking it first masked the far
+// more serious finding of a task actually taken inside the window. An entry
+// conflict is also the more specific message: it names the task.
 function mandatoryRestConflict(band, all){
-  const {start: taskStart} = entryDates(band.sourceEntry);
-  const standbys = getStandbys(all);
-  const containingSb = standbyContaining(taskStart, standbys);
-  if(containingSb && containingSb.end.getTime() > band.start){
-    return { kind:'standby', standbyEnd: containingSb.end.getTime() };
-  }
   let found = null;
   for(const e of all){
     if(e.id === band.sourceEntry.id) continue;
@@ -2894,7 +3160,14 @@ function mandatoryRestConflict(band, all){
       if(!found || es.getTime() < entryDates(found).start.getTime()) found = e;
     }
   }
-  return found ? { kind:'entry', conflictEntry: found } : null;
+  if(found) return { kind:'entry', conflictEntry: found };
+  const {start: taskStart} = entryDates(band.sourceEntry);
+  const standbys = getStandbys(all);
+  const containingSb = standbyContaining(taskStart, standbys);
+  if(containingSb && containingSb.end.getTime() > band.start){
+    return { kind:'standby', standbyEnd: containingSb.end.getTime() };
+  }
+  return null;
 }
 
 // Above-baseline bands: FDP (priority) and NFD, clipped to the day, plus any
@@ -3548,6 +3821,28 @@ document.getElementById('addBtn').addEventListener('click', async ()=>{
     entry.increasedFDP = document.getElementById('f-increased').checked;
     entry.extType = document.getElementById('f-extType').value;
     entry.extHours = document.getElementById('f-extHours').value || 0;
+  }
+  // 10.6 (v1.1): "The increased limits that are shown in table 4 in red may be
+  // applied prior to shift commencement... Once the member commences duty,
+  // increases in FDP are not achieved through an increase in the duty limit but
+  // instead as either an increase to an FDP by Split Duty Rest Period (SDRP);
+  // or an increase to an FDP by an Extension." An increased-limit flag set on
+  // an FDP that has already started is therefore not a valid way to gain the
+  // hours. Warned rather than blocked: the record may be a retrospective entry
+  // of an FDP that was correctly rostered to the increased limit beforehand.
+  if(currentType==='FDP' && entry.increasedFDP){
+    const startedMs = entryDates(entry).start.getTime();
+    if(startedMs <= Date.now()){
+      const ok = confirm(
+        'OMY 10.6 (v1.1): the increased FDP limit is a rostering action — it must be applied '
+        + 'before the shift commences, via a roster change agreed with the member and the SBP/SACO. '
+        + 'Once duty has commenced, extra hours come from a split duty rest period or an extension, '
+        + 'not from raising the duty limit.\n\n'
+        + 'This FDP has already started. Keep the increased-limit flag only if the increase was '
+        + 'agreed before the shift began and this is a retrospective entry.\n\n'
+        + 'OK to keep the flag, or Cancel to go back and change it.');
+      if(!ok) return;
+    }
   }
   const beforeSave = entries;
   if(editingId){
