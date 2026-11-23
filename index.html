@@ -605,7 +605,8 @@
         <li>Split duty rest is calculated automatically: any gap of at least 2 consecutive hours between tasks qualifies, measured from the end of the task (which already includes the 30 min after landing, per 10.8.1). Standby counts as rest — it is free of all duties with sleeping accommodation — but NFD does not, so an NFD splits a gap into shorter pieces. It is not applied to an increased FDP, per 10.6.1. Per 10.8.1's second condition, the remaining portion after the most recent qualifying rest is also capped at a fresh Table 4 lookup at the resumption time.</li>
         <li>Mandatory rest bands on the Time Line cover two separate triggers per 10.5, taking whichever reaches furthest (not additive): a KSS score of 7 gives a fixed 3h rest at suitable sleeping accommodation; a KSS score of 8 or more gives the <b>full 10.12.3 rest</b> (Table 9 base plus the add-ons). v0.9 cited the KSS scale itself for the 8-or-greater case, which carries no ODP figures and had to be worked around by ruling R6; <b>v1.1 corrected that reference to Table 9</b>, so the app now follows the manual directly. v1.1 also added that at KSS 8 or more the crew member is no longer fit for operations, all operations are to cease, a diversion to the nearest suitable landing area is to occur if in flight, and a Fatigue Safety Report is to be lodged on Air Maestro (Safety Reports &rarr; Lodge New Safety Report &rarr; Report Type: RWFMS Fatigue). Separately, any FDP that needed an extension, was increased, or organically ran past 12h gets the full Table 9 formula, same as 10.12.3.</li>
         <li><b>Conservative assumption:</b> within that rest gap, only the portion falling between 2100–0600 is treated as genuine sleeping accommodation (full credit, per Table 5) — it's unrealistic to assume someone actually sleeps during the day even though sleeping accommodation is available. The portion falling 0600–2100 is treated as resting accommodation only (half credit, capped at 2 hours total, per Table 6). The full raw gap (unweighted) is still what counts at 50% toward cumulative duty per Table 9.</li>
-        <li><b>Table 9 (10.12.3) is read by where the rest falls</b>, not by when duty finished &mdash; the table's middle column is headed "Off Duty Time Period" (ruling R2). A day shift finishing in the day or evening has its rest through the night, so 8 hrs applies; a night shift finishing in the early hours has to sleep through the following day, so 10 hrs applies. In the app: rest starting 0600&ndash;2259 &rarr; 8 hrs, rest starting 2300&ndash;0559 &rarr; 10 hrs. This is the reverse of versions up to v0.61.0, which read the same clock times off the shift-completed column.</li>
+        <li><b>Table 9 (10.12.3) is read by what the off-duty period COVERS</b> &mdash; not by when duty finished, and not by the clock time the rest happens to begin. CAO 48.1 Appendix 4B clause 5.1 states the test directly: 8 hours "if the off-duty period includes <b>the</b> period between 2300 and 0559 hours local time", 10 hours "if the off-duty period does not include" it. It is <i>the</i> period, not <i>any part</i> of it &mdash; the plain English guide's own version history records the word "any" being changed to "the" &mdash; so the whole 2300&ndash;0559 window must be covered to reach the 8-hour row. OMY's Day/Night labels are shorthand for exactly this: on the standard roster a day shift rests 1800&ndash;0800 and covers the window (8 hours), while a night shift rests 0800&ndash;1800 and covers none of it (10 hours). The middle column, "Off Duty Time Period", is the operative one (rulings R2, R32 and R33). <b>Corrected in v1.2.0.</b> Up to v1.0.0 the lookup keyed on the single instant the rest began, which paired each clock window with the other row's figure and, because a standby's rest always begins when the standby ends &mdash; 0800 after a night shift, 1800 after a day shift &mdash; put <i>every</i> standby in the 8-hour row. A night standby could never reach 10 hours. The requirement is now resolved in three steps: where the next duty is rostered, the <b>actual</b> off-duty period is tested for full coverage of 2300&ndash;0559; where it is not, the <b>shift</b> decides it, taken from the standby's recorded day/night type or, failing that, inferred from whether the duty's own span crosses the window; and only a direct lookup with neither falls back to the hour the rest begins.</li>
+        <li><b>The off-duty period cannot begin while you are still on standby (10.2).</b> The ODP is required "before returning to Standby or starting a new FDP", so a job finishing at 0300 on a night shift does not start its ODP at 0300 &mdash; it starts when the standby finishes at 0800, and the rest that follows is then measured from there. This is why a late-finishing night task does not quietly drop into the 8-hour row. The KSS stand-down under 10.5 is the deliberate exception: that one begins the moment work stops, because 10.5 takes the aircraft offline immediately (ruling R30).</li>
         <li>The 40-vs-60-hour 7-day duty cap checks for a 36+ hour off-duty gap that fully contains at least 2 local nights (an 8+ hour break covering 2200–0500), based on your rosters being in a single time zone.</li>
         <li>Late Night Operations are counted once per local night regardless of how many FDPs occurred, per the note under 10.9.</li>
         <li>Cumulative duty windows clip entries to the window boundary and merge overlapping entries, so a duty straddling the 7- or 14-day cutoff counts only for the portion inside it.</li>
@@ -690,7 +691,7 @@ const firebaseConfig = {
              calculated (anything that can change a number on screen).
      PATCH — bug fixes and wording that don't change the rules.
    Set here only; the title and header read from it. */
-const APP_VERSION = '1.0.0';
+const APP_VERSION = '1.2.0';
 // Applied immediately rather than in init(), which only runs after sign-in —
 // otherwise the login screen shows a blank version tag.
 document.getElementById('versionTag').textContent = `v${APP_VERSION}`;
@@ -1967,8 +1968,52 @@ function postFDPDutyHours(entry, all, restStart){
 }
 function requiredODPHours(entry, all, effectiveEnd){
   if(!entry || (entry.type!=='FDP' && entry.type!=='STANDBY')) return 0;
-  const end = effectiveEnd || entryDates(entry).end;
-  let hours = minODPHours(end);
+  // The ODP cannot begin while the member is still on standby. 10.2 requires
+  // the off-duty period "before returning to Standby or starting a new FDP",
+  // so a task finishing at 0300 inside a night standby that runs to 0800 does
+  // not start its ODP until 0800 (ruling of 23 Nov). continuousDutyEnd counts
+  // the containing standby, which is exactly that point; callers that have
+  // already resolved the rest start pass it in as effectiveEnd.
+  const end = effectiveEnd
+    || (entry.type === 'FDP' ? continuousDutyEnd(entry, all) : entryDates(entry).end);
+  // Table 9 turns on what the off-duty period covers, so the next duty is what
+  // closes it. The entry itself is excluded; so is anything already running at
+  // `end`, which nextDutyStartAfter does by taking only starts after it.
+  const ownIds = [entry.id];
+  let shiftHint = '';
+  // Every standby must resolve to a shift, because the clock fallback is wrong
+  // for standbys by construction. Where it was not recorded, the standby's own
+  // span says which it was: a night standby covers 2300-0559, a day one does not.
+  // standbyContaining returns a {id,start,end} window, not the entry itself, so
+  // the real record has to be resolved by id before the shift can be read off it.
+  const shiftOf = ref => {
+    if(!ref) return '';
+    const rec = ref.type === 'STANDBY' ? ref : all.find(e => String(e.id) === String(ref.id));
+    if(!rec) return '';
+    const t = standbyShiftType(rec);
+    if(t) return t;
+    const d = entryDates(rec);
+    return nightODPSpanMinutes(d.start, d.end) > 60 ? 'night' : 'day';
+  };
+  if(entry.type === 'STANDBY'){
+    shiftHint = shiftOf(entry);
+  } else if(entry.type === 'FDP'){
+    const sbNow = standbyContaining(entryDates(entry).start, getStandbys(all));
+    if(sbNow){ ownIds.push(sbNow.id); shiftHint = shiftOf(sbNow); }
+    const stHere = fdpStateForTask(entry, all);
+    if(stHere && stHere.group) for(const t of stHere.group.tasks) ownIds.push(t.e.id);
+    // Outside any standby — a sim or training day — the FDP's own span says
+    // which shift it was, the same test used for a standby. An FDP running
+    // 1800-0800 is a night shift whatever hour the rest happens to begin at,
+    // which is the whole point of the 23 Nov correction.
+    if(!shiftHint){
+      const span = (stHere && stHere.group)
+        ? { start: entryDates(stHere.group.tasks[0].e).start, end: stHere.lastTaskEnd }
+        : entryDates(entry);
+      shiftHint = nightODPSpanMinutes(span.start, span.end) > 60 ? 'night' : 'day';
+    }
+  }
+  let hours = minODPHours(end, nextDutyStartAfter(all, end, ownIds), shiftHint);
   if(entry.type === 'STANDBY'){
     // C5 — the increased-FDP 12h floor and the extension add-ons belong to the
     // FDP flown inside the standby, not to the standby record. Evaluating the
@@ -2177,27 +2222,118 @@ function dutyBlockStart(all, anchor){
 //
 //   Shift Completed "Day"   | off duty 2300–0559 | 8 hours
 //   Shift Completed "Night" | off duty 0600–2259 | 10 hours
-//
-// A day shift finishes in the day or evening, so its rest occupies the night
-// (2300–0559) and 8 hours suffices. A night shift finishes in the early hours,
-// so its rest has to be taken through the following day (0600–2259), which
-// sleeps worse — hence 10 hours. Rest begins when duty ends, so the bucket is
-// decided by which window the rest STARTS in.
-//
-// This is the reverse of what the app did up to v0.61.0, which read the same
-// clock time as the shift-completed column: a 0300 finish was given 8h when 10h
-// applies, and an 1800 finish 10h where OMY asks for 8h.
-function minODPBucket(restStart){
-  const mins = restStart.getHours()*60 + restStart.getMinutes();
-  const restInNight = (mins >= 1380 || mins <= 359); // rest starts 23:00–05:59
-  return restInNight
-    ? { hours:10, shift:'Night', window:'0600–2259',
-        why:'rest starts 2300–0559, so it runs through the following day' }
-    : { hours:8,  shift:'Day',   window:'2300–0559',
-        why:'rest starts 0600–2259, so it covers the night' };
+// Does [start,end) contain an ENTIRE 2300-0559 window? CAO 48.1 Appendix 4B
+// clause 5.1 says "includes the period between 2300 and 0559 hours local time",
+// not "any part of" it — the plain English guide's own version history records
+// the word "any" being changed to "the", so the whole window must be covered.
+// Note this is the 2300-0559 ODP window, NOT the 2300-0530 LNO window that
+// lateNightOverlapMinutes measures; the two must not be conflated.
+// Minutes of [start,end) inside any 2300-0559 window — used to tell a night
+// standby from a day one where the shift was never recorded on the entry.
+function nightODPSpanMinutes(start, end){
+  let total = 0;
+  for(let dOffset=-2; dOffset<=2; dOffset++){
+    const base = new Date(start); base.setHours(0,0,0,0); base.setDate(base.getDate()+dOffset);
+    const winStart = new Date(base); winStart.setHours(23,0,0,0);
+    const winEnd = new Date(winStart.getTime() + 7*3600000);
+    const ovStart = Math.max(start.getTime(), winStart.getTime());
+    const ovEnd = Math.min(end.getTime(), winEnd.getTime());
+    if(ovEnd > ovStart) total += (ovEnd-ovStart)/60000;
+  }
+  return total;
 }
-function minODPHours(restStart){
-  return minODPBucket(restStart).hours;
+function coversNightODPWindow(start, end){
+  for(let dOffset=-2; dOffset<=2; dOffset++){
+    const base = new Date(start); base.setHours(0,0,0,0); base.setDate(base.getDate()+dOffset);
+    const winStart = new Date(base); winStart.setHours(23,0,0,0);
+    const winEnd = new Date(winStart.getTime() + 7*3600000); // 2300 -> 0600
+    if(start.getTime() <= winStart.getTime() && end.getTime() >= winEnd.getTime()) return true;
+  }
+  return false;
+}
+
+// Table 9 (10.12.3). The test is what the OFF-DUTY PERIOD COVERS, not the clock
+// time it happens to begin at. CAO 48.1 Appendix 4B clause 5.1 states it
+// directly, and the plain English guide repeats it:
+//
+//   (a) if the off-duty period includes the period between 2300 and 0559 hours
+//       local time  -> 8 hours;
+//   (b) if the off-duty period does not include the period between 2300 and
+//       0559 hours local time -> 10 hours.
+//
+// OMY's Table 9 labels the two rows Day and Night, which is a shorthand for the
+// same test: on the standard roster a day shift rests 1800-0800 and so covers
+// the night (8 hours), while a night shift rests 0800-1800 and gets none of it
+// (10 hours). The Off Duty Time Period column is the operative one.
+//
+// Up to v1.0.0 this keyed on the clock instant the rest STARTED, which inverted
+// the table's own windows and, because a standby's rest always begins when the
+// standby ends (0800 after a night shift, 1800 after a day shift), put every
+// standby in the 8-hour bucket. A night standby could never reach 10 hours.
+// Corrected by ruling of 23 Nov.
+//
+// The test needs the whole off-duty period, so it is applied three ways in
+// order of how much is actually known:
+//
+//   1. restEnd known (the next duty is rostered) -> test the ACTUAL off-duty
+//      period. This is the normal case, since shifts are logged ahead.
+//   2. Otherwise, fall back to the shift just completed, which is exactly what
+//      OMY's Day/Night row labels encode: day -> 8h, night -> 10h. The strict
+//      "the period" reading makes this fallback necessary rather than optional
+//      — a day shift finishing at 1800 does not cover the whole 2300-0559
+//      window within any 8 or 10 hour minimum, yet OMY plainly puts it on the
+//      8-hour row, because the rest that actually follows runs to 0800.
+//   3. With neither — a standalone sim or training FDP outside any standby,
+//      nothing rostered after it — classify by the hour the rest begins:
+//      0600-2259 means duty finished in the day or evening, so the rest that
+//      follows runs across the night (8h); 2300-0559 means it finished in the
+//      small hours, so the rest runs through the following day (10h). This is
+//      sound for a bare FDP, whose finish time really does say which shift it
+//      was. It is NOT sound for a standby, whose rest always begins when the
+//      standby ends, and applying it there was the v1.0.0 bug — which is why
+//      case 2 resolves a shift for every standby before reaching here.
+function minODPBucket(restStart, restEnd, shiftHint){
+  let covered, assumed, via, span;
+  if(restEnd){
+    covered = coversNightODPWindow(restStart, restEnd);
+    assumed = false; via = 'actual'; span = 'the off-duty period';
+  } else if(shiftHint === 'day' || shiftHint === 'night'){
+    covered = (shiftHint === 'day');
+    assumed = true; via = 'shift';
+    span = `a ${shiftHint} shift`;
+  } else {
+    const mins = restStart.getHours()*60 + restStart.getMinutes();
+    covered = !(mins >= 1380 || mins <= 359);   // not 2300-0559
+    assumed = true; via = 'clock'; span = 'the rest';
+  }
+  const why = via === 'shift'
+    ? (covered ? 'a day shift rests across 2300–0559' : 'a night shift rests across the following day')
+    : via === 'clock'
+      ? (covered ? 'duty finished in the day or evening, so the rest runs across the night'
+                 : 'duty finished in the small hours, so the rest runs through the following day')
+      : (covered ? `${span} covers the whole of 2300–0559` : `${span} does not cover the whole of 2300–0559`);
+  return covered
+    ? { hours:8,  shift:'Day',   window:'2300–0559', covered, assumed, via, why }
+    : { hours:10, shift:'Night', window:'0600–2259', covered, assumed, via, why };
+}
+function minODPHours(restStart, restEnd, shiftHint){
+  return minODPBucket(restStart, restEnd, shiftHint).hours;
+}
+
+// The next duty of any kind that begins after the rest starts. Anything already
+// running at that moment is not the END of the rest — the rest has not begun
+// until it finishes, and callers have already resolved that into restStart.
+function nextDutyStartAfter(all, restStart, excludeIds){
+  const fromMs = restStart.getTime();
+  const skip = new Set((excludeIds||[]).map(String));
+  let best = null;
+  for(const e of all){
+    if(!['FDP','NFD','STANDBY'].includes(e.type)) continue;
+    if(skip.has(String(e.id))) continue;
+    const s = entryDates(e).start.getTime();
+    if(s > fromMs && (best === null || s < best)) best = s;
+  }
+  return best === null ? null : new Date(best);
 }
 
 /* ---------------- Standby-anchored required rest (Time Line) ---------------- */
